@@ -16,6 +16,7 @@ RUN npm run build
 
 # ── Migrator (has full node_modules + prisma CLI) ─────────────────────────────
 FROM base AS migrator
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY prisma ./prisma
@@ -23,6 +24,7 @@ CMD ["node_modules/.bin/prisma", "migrate", "deploy"]
 
 # ── Runner ────────────────────────────────────────────────────────────────────
 FROM base AS runner
+RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
 
