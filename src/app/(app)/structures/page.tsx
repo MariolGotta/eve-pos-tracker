@@ -17,10 +17,11 @@ const ALL_STATES: StructureState[] = [
 export default async function StructuresPage({
   searchParams,
 }: {
-  searchParams: { system?: string; state?: string; corp?: string; dead?: string };
+  searchParams: { system?: string; state?: string; corp?: string; dead?: string; kind?: string };
 }) {
-  const { system, state, corp, dead } = searchParams;
+  const { system, state, corp, dead, kind } = searchParams;
   const includeDead = dead === "1";
+  const validKind = kind === "POS" || kind === "CITADEL" ? kind : null;
 
   const validState =
     state && ALL_STATES.includes(state as StructureState)
@@ -32,7 +33,7 @@ export default async function StructuresPage({
       deletedAt: null,
       ...(system ? { system: { contains: system, mode: "insensitive" } } : {}),
       ...(corp ? { corporation: { contains: corp, mode: "insensitive" } } : {}),
-      // State filter: explicit state takes priority; otherwise hide DEAD unless includeDead
+      ...(validKind ? { kind: validKind } : {}),
       ...(validState
         ? { currentState: validState }
         : !includeDead
@@ -72,6 +73,11 @@ export default async function StructuresPage({
           placeholder="Filter by corporation…"
           className="w-48"
         />
+        <select name="kind" defaultValue={kind ?? ""} className="w-36">
+          <option value="">All types</option>
+          <option value="POS">POS</option>
+          <option value="CITADEL">Citadel</option>
+        </select>
         <select name="state" defaultValue={state ?? ""} className="w-44">
           <option value="">All states</option>
           {ALL_STATES.map((s) => (
