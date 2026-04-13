@@ -1,11 +1,8 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { StructureKind } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-
-function canMutate(session: { user: { userId: string; role: string } }, createdById: string) {
-  return session.user.role === "OWNER" || session.user.userId === createdById;
-}
 
 export async function GET(
   _req: NextRequest,
@@ -26,13 +23,11 @@ export async function GET(
     },
   });
 
-  if (!structure) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
+  if (!structure) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(structure);
 }
 
+// Any authenticated user can edit
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -45,10 +40,6 @@ export async function PATCH(
   });
   if (!structure) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!canMutate(session, structure.createdById)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -56,9 +47,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { name, corporation, notes, distanceFromSun } = body;
+  const { name, system, corporation, notes, distanceFromSun, kind } = body;
 
-  // Validate distanceFromSun if provided
   let parsedDistance: number | undefined;
   if (distanceFromSun !== undefined) {
     parsedDistance = parseFloat(String(distanceFromSun));
@@ -67,13 +57,25 @@ export async function PATCH(
     }
   }
 
+  if (notes !== undefined && typeof notes === "string" && notes.trim().length > 100) {
+    return NextResponse.json({ error: "Notes cannot exceed 100 characters" }, { status: 400 });
+  }
+
+  const validKinds: StructureKind[] = ["POS", "CITADEL"];
+  const parsedKind: StructureKind | undefined =
+    kind !== undefined && validKinds.includes(kind as StructureKind)
+      ? (kind as StructureKind)
+      : undefined;
+
   const updated = await prisma.structure.update({
     where: { id: params.id },
     data: {
-      ...(name !== undefined ? { name: typeof name === "string" ? name.trim() || null : null } : {}),
-      ...(corporation !== undefined ? { corporation: typeof corporation === "string" ? corporation.trim() || null : null } : {}),
-      ...(notes !== undefined ? { notes: typeof notes === "string" ? notes.trim() || null : null } : {}),
+      ...(system !== undefined ? { system: typeof system === "string" ? system.trim().slice(0, 100) || structure.system : structure.system } : {}),
+      ...(name !== undefined ? { name: typeof name === "string" ? name.trim().slice(0, 200) || null : null } : {}),
+      ...(corporation !== undefined ? { corporation: typeof corporation === "string" ? corporation.trim().slice(0, 200) || null : null } : {}),
+      ...(notes !== undefined ? { notes: typeof notes === "string" ? notes.trim().slice(0, 100) || null : null } : {}),
       ...(parsedDistance !== undefined ? { distanceFromSun: parsedDistance } : {}),
+      ...(parsedKind !== undefined ? { kind: parsedKind } : {}),
     },
   });
 
@@ -82,14 +84,14 @@ export async function PATCH(
       structureId: params.id,
       userId: session.user.userId,
       action: "EDITED",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      payload: { name: name ?? null, corporation: corporation ?? null, notes: notes ?? null, distanceFromSun: distanceFromSun ?? null } as any,
+      payload: { system, name, corporation, notes, distanceFromSun, kind } as any,
     },
   });
 
   return NextResponse.json(updated);
 }
 
+// Only OWNER can delete
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
@@ -97,14 +99,14 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  if (session.user.role !== "OWNER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const structure = await prisma.structure.findFirst({
     where: { id: params.id, deletedAt: null },
   });
   if (!structure) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  if (!canMutate(session, structure.createdById)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   await prisma.structure.update({
     where: { id: params.id },

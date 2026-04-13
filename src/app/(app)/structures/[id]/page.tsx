@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import StateBadge from "@/components/StateBadge";
 import TimerCountdown from "@/components/TimerCountdown";
 import { availableActions } from "@/lib/state-machine";
 import StructureActions from "./StructureActions";
 import VerifyToggle from "./VerifyToggle";
+import StructureControls from "./StructureControls";
 
 export const revalidate = 0;
 
@@ -27,6 +30,9 @@ export default async function StructureDetailPage({
   });
 
   if (!structure) notFound();
+
+  const session = await getServerSession(authOptions);
+  const isOwner = session?.user.role === "OWNER";
 
   const activeTimer = structure.timers.find((t) => t.status === "PENDING");
   const actions = availableActions(structure.currentState);
@@ -111,13 +117,19 @@ export default async function StructureDetailPage({
         </div>
       )}
 
-      {/* Notes */}
-      {structure.notes && (
-        <div className="card">
-          <p className="text-xs text-eve-muted uppercase tracking-wide mb-1">Notes</p>
-          <p className="text-sm text-gray-300 whitespace-pre-wrap">{structure.notes}</p>
-        </div>
-      )}
+      {/* Edit, Delete, Notes */}
+      <StructureControls
+        structure={{
+          id: structure.id,
+          system: structure.system,
+          kind: structure.kind,
+          name: structure.name,
+          corporation: structure.corporation,
+          distanceFromSun: structure.distanceFromSun,
+          notes: structure.notes,
+        }}
+        isOwner={isOwner}
+      />
 
       {/* Timer history */}
       {structure.timers.length > 0 && (

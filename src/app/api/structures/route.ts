@@ -23,9 +23,8 @@ export async function GET(req: NextRequest) {
     where: {
       deletedAt: null,
       ...(system ? { system: { contains: system.slice(0, 100), mode: "insensitive" } } : {}),
-      ...(state ? { currentState: state } : {}),
       ...(corp ? { corporation: { contains: corp.slice(0, 100), mode: "insensitive" } } : {}),
-      ...(!includeDead ? { currentState: { not: "DEAD" } } : {}),
+      ...(state ? { currentState: state } : !includeDead ? { currentState: { not: "DEAD" } } : {}),
     },
     include: {
       timers: {
@@ -81,7 +80,7 @@ export async function POST(req: NextRequest) {
       distanceFromSun: distance,
       name: typeof name === "string" ? name.trim().slice(0, 200) || null : null,
       corporation: typeof corporation === "string" ? corporation.trim().slice(0, 200) || null : null,
-      notes: typeof notes === "string" ? notes.trim().slice(0, 2000) || null : null,
+      notes: typeof notes === "string" ? notes.trim().slice(0, 100) || null : null,
       currentState: state,
       createdById: session.user.userId,
     },
