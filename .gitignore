@@ -12,8 +12,6 @@ out/
 .env.test.local
 .env.production.local
 
-# Prisma
-prisma/migrations/
 
 # Local dev overrides
 docker-compose.override.yml
