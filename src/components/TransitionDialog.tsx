@@ -7,14 +7,14 @@ interface Props {
   structureId: string;
   currentState: StructureState;
   actions: TransitionAction[];
-  /** When true, dialog opens immediately in "what happened?" mode (post 15-min window) */
+  /** When true, dialog opens immediately in "what happened?" mode (post 12-min window) */
   autoOpen?: boolean;
   onSuccess: () => void;
   onClose?: () => void;
 }
 
-// ── Duration input (for SHIELD_DOWN) ─────────────────────────────────────────
-function DurationInput({
+// ── Duration input (hours + minutes, for SHIELD_DOWN) ────────────────────────
+function ShieldDurationInput({
   hours,
   minutes,
   onChange,
@@ -66,45 +66,64 @@ function DurationInput({
   );
 }
 
-// ── Hour picker (for ARMOR_DOWN — hull timer) ─────────────────────────────────
-function HullTimerInput({
-  date,
-  hour,
+// ── Hull timer input (days + hours + minutes, for ARMOR_DOWN) ─────────────────
+function HullDurationInput({
+  days,
+  hours,
+  minutes,
   onChange,
 }: {
-  date: string;
-  hour: number;
-  onChange: (date: string, hour: number) => void;
+  days: number;
+  hours: number;
+  minutes: number;
+  onChange: (d: number, h: number, m: number) => void;
 }) {
-  const todayLocal = new Date().toISOString().slice(0, 10);
+  const totalMs = days * 86_400_000 + hours * 3_600_000 + minutes * 60_000;
   return (
     <div>
-      <label>Hull window opens at (round hour, local time)</label>
-      <div className="flex gap-2">
-        <input
-          type="date"
-          value={date}
-          min={todayLocal}
-          onChange={(e) => onChange(e.target.value, hour)}
-          className="flex-1"
-        />
-        <select
-          value={hour}
-          onChange={(e) => onChange(date, parseInt(e.target.value))}
-          className="w-24"
-        >
-          {Array.from({ length: 24 }, (_, h) => (
-            <option key={h} value={h}>
-              {String(h).padStart(2, "0")}:00
-            </option>
-          ))}
-        </select>
+      <label>Time until hull window opens</label>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <input
+            type="number"
+            min={0}
+            max={8}
+            value={days}
+            onChange={(e) => onChange(Math.max(0, Math.min(8, parseInt(e.target.value) || 0)), hours, minutes)}
+            className="w-full text-center"
+          />
+          <p className="text-xs text-eve-muted text-center mt-0.5">days</p>
+        </div>
+        <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+        <div className="flex-1">
+          <input
+            type="number"
+            min={0}
+            max={23}
+            value={hours}
+            onChange={(e) => onChange(days, Math.max(0, Math.min(23, parseInt(e.target.value) || 0)), minutes)}
+            className="w-full text-center"
+          />
+          <p className="text-xs text-eve-muted text-center mt-0.5">hours</p>
+        </div>
+        <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+        <div className="flex-1">
+          <input
+            type="number"
+            min={0}
+            max={59}
+            value={minutes}
+            onChange={(e) => onChange(days, hours, Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+            className="w-full text-center"
+          />
+          <p className="text-xs text-eve-muted text-center mt-0.5">minutes</p>
+        </div>
       </div>
-      {date && (
+      {totalMs > 0 && (
         <p className="text-xs text-eve-muted mt-1">
-          UTC:{" "}
+          Window opens at:{" "}
           <span className="text-gray-300">
-            {new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).toUTCString()}
+            {new Date(Date.now() + totalMs).toUTCString()}
           </span>
         </p>
       )}
@@ -125,17 +144,16 @@ export default function TransitionDialog({
     currentState === "ARMOR_VULNERABLE" || currentState === "HULL_VULNERABLE";
 
   const [open, setOpen] = useState(autoOpen);
-  const [selected, setSelected] = useState<TransitionAction | null>(
-    isVulnerable ? null : null
-  );
-  // Duration (SHIELD_DOWN)
-  const [durationH, setDurationH] = useState(23);
-  const [durationM, setDurationM] = useState(55);
-  // Hull timer (ARMOR_DOWN)
-  const [hullDate, setHullDate] = useState(
-    new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
-  );
-  const [hullHour, setHullHour] = useState(new Date().getHours());
+  const [selected, setSelected] = useState<TransitionAction | null>(null);
+
+  // Shield timer (SHIELD_DOWN): hours + minutes
+  const [shieldH, setShieldH] = useState(23);
+  const [shieldM, setShieldM] = useState(55);
+
+  // Hull timer (ARMOR_DOWN): days + hours + minutes
+  const [hullD, setHullD] = useState(1);
+  const [hullH, setHullH] = useState(0);
+  const [hullM, setHullM] = useState(0);
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -153,15 +171,14 @@ export default function TransitionDialog({
 
   function buildExpiresAt(): string | undefined {
     if (selected === "SHIELD_DOWN") {
-      const ms = durationH * 3_600_000 + durationM * 60_000;
+      const ms = shieldH * 3_600_000 + shieldM * 60_000;
       if (ms <= 0) return undefined;
       return new Date(Date.now() + ms).toISOString();
     }
     if (selected === "ARMOR_DOWN") {
-      if (!hullDate) return undefined;
-      return new Date(
-        `${hullDate}T${String(hullHour).padStart(2, "0")}:00:00`
-      ).toISOString();
+      const ms = hullD * 86_400_000 + hullH * 3_600_000 + hullM * 60_000;
+      if (ms <= 0) return undefined;
+      return new Date(Date.now() + ms).toISOString();
     }
     return undefined;
   }
@@ -170,12 +187,12 @@ export default function TransitionDialog({
     if (!selected) return;
     setError("");
 
-    if (selected === "SHIELD_DOWN" && durationH === 0 && durationM === 0) {
+    if (selected === "SHIELD_DOWN" && shieldH === 0 && shieldM === 0) {
       setError("Duration must be greater than 0.");
       return;
     }
-    if (selected === "ARMOR_DOWN" && !hullDate) {
-      setError("Please select a date for the hull timer.");
+    if (selected === "ARMOR_DOWN" && hullD === 0 && hullH === 0 && hullM === 0) {
+      setError("Duration must be greater than 0.");
       return;
     }
 
@@ -199,7 +216,7 @@ export default function TransitionDialog({
     });
   }
 
-  // ── Vulnerable states: simplified "what happened?" dialog ─────────────────
+  // ── Vulnerable states: "what happened?" dialog ────────────────────────────
   if (isVulnerable) {
     const attackedAction: TransitionAction =
       currentState === "ARMOR_VULNERABLE" ? "ARMOR_DOWN" : "MARK_DEAD";
@@ -226,7 +243,7 @@ export default function TransitionDialog({
                     🔵 POS Regenerated — nobody attacked, shields back up
                   </button>
                   <button
-                    onClick={() => setSelected(attackedAction)}
+                    onClick={() => { setSelected(attackedAction); setError(""); }}
                     className="w-full text-left px-4 py-3 rounded-md border border-eve-border text-sm text-gray-300 hover:border-red-500 transition-colors"
                   >
                     {currentState === "ARMOR_VULNERABLE"
@@ -237,10 +254,11 @@ export default function TransitionDialog({
               )}
 
               {selected === "ARMOR_DOWN" && (
-                <HullTimerInput
-                  date={hullDate}
-                  hour={hullHour}
-                  onChange={(d, h) => { setHullDate(d); setHullHour(h); }}
+                <HullDurationInput
+                  days={hullD}
+                  hours={hullH}
+                  minutes={hullM}
+                  onChange={(d, h, m) => { setHullD(d); setHullH(h); setHullM(m); }}
                 />
               )}
 
@@ -298,10 +316,10 @@ export default function TransitionDialog({
             )}
 
             {selected === "SHIELD_DOWN" && (
-              <DurationInput
-                hours={durationH}
-                minutes={durationM}
-                onChange={(h, m) => { setDurationH(h); setDurationM(m); }}
+              <ShieldDurationInput
+                hours={shieldH}
+                minutes={shieldM}
+                onChange={(h, m) => { setShieldH(h); setShieldM(m); }}
               />
             )}
 
