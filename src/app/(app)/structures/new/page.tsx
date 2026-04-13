@@ -14,11 +14,40 @@ export default function NewStructurePage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [initialState, setInitialState] = useState("SHIELD");
+
+  // Armor timer: hours + minutes
+  const [armorH, setArmorH] = useState(23);
+  const [armorM, setArmorM] = useState(55);
+
+  // Hull timer: days + hours + minutes
+  const [hullD, setHullD] = useState(1);
+  const [hullH, setHullH] = useState(0);
+  const [hullM, setHullM] = useState(0);
+
+  const armorMs = armorH * 3_600_000 + armorM * 60_000;
+  const hullMs = hullD * 86_400_000 + hullH * 3_600_000 + hullM * 60_000;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     const form = new FormData(e.currentTarget);
+
+    if (initialState === "ARMOR_TIMER" && armorMs <= 0) {
+      setError("Please enter the remaining time until the armor window.");
+      return;
+    }
+    if (initialState === "HULL_TIMER" && hullMs <= 0) {
+      setError("Please enter the remaining time until the hull window.");
+      return;
+    }
+
+    const timerExpiresAt =
+      initialState === "ARMOR_TIMER"
+        ? new Date(Date.now() + armorMs).toISOString()
+        : initialState === "HULL_TIMER"
+        ? new Date(Date.now() + hullMs).toISOString()
+        : null;
 
     startTransition(async () => {
       const res = await fetch("/api/structures", {
@@ -31,7 +60,8 @@ export default function NewStructurePage() {
           name: form.get("name") || null,
           corporation: form.get("corporation") || null,
           notes: form.get("notes") || null,
-          initialState: form.get("initialState") || "SHIELD",
+          initialState,
+          timerExpiresAt,
         }),
       });
 
@@ -48,7 +78,7 @@ export default function NewStructurePage() {
 
   return (
     <div className="max-w-xl space-y-6">
-      <h1 className="text-xl font-bold text-white">New POS</h1>
+      <h1 className="text-xl font-bold text-white">New Structure</h1>
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
@@ -80,7 +110,13 @@ export default function NewStructurePage() {
 
         <div>
           <label htmlFor="initialState">Current State *</label>
-          <select id="initialState" name="initialState" className="w-full" defaultValue="SHIELD">
+          <select
+            id="initialState"
+            name="initialState"
+            className="w-full"
+            value={initialState}
+            onChange={(e) => setInitialState(e.target.value)}
+          >
             {INITIAL_STATES.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
@@ -89,8 +125,85 @@ export default function NewStructurePage() {
           </select>
         </div>
 
+        {/* Armor timer remaining time */}
+        {initialState === "ARMOR_TIMER" && (
+          <div className="space-y-2 p-3 bg-yellow-500/5 border border-yellow-500/30 rounded-md">
+            <label className="text-yellow-300">Time remaining until armor window opens *</label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={47} value={armorH}
+                  onChange={(e) => setArmorH(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full text-center"
+                />
+                <p className="text-xs text-eve-muted text-center mt-0.5">hours</p>
+              </div>
+              <span className="text-2xl font-bold text-eve-muted pb-4">:</span>
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={59} value={armorM}
+                  onChange={(e) => setArmorM(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center"
+                />
+                <p className="text-xs text-eve-muted text-center mt-0.5">minutes</p>
+              </div>
+            </div>
+            {armorMs > 0 && (
+              <p className="text-xs text-eve-muted">
+                Window opens at:{" "}
+                <span className="text-gray-300">
+                  {new Date(Date.now() + armorMs).toUTCString()}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Hull timer remaining time */}
+        {initialState === "HULL_TIMER" && (
+          <div className="space-y-2 p-3 bg-red-500/5 border border-red-500/30 rounded-md">
+            <label className="text-red-300">Time remaining until hull window opens *</label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={8} value={hullD}
+                  onChange={(e) => setHullD(Math.max(0, Math.min(8, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center"
+                />
+                <p className="text-xs text-eve-muted text-center mt-0.5">days</p>
+              </div>
+              <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={23} value={hullH}
+                  onChange={(e) => setHullH(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center"
+                />
+                <p className="text-xs text-eve-muted text-center mt-0.5">hours</p>
+              </div>
+              <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={59} value={hullM}
+                  onChange={(e) => setHullM(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center"
+                />
+                <p className="text-xs text-eve-muted text-center mt-0.5">minutes</p>
+              </div>
+            </div>
+            {hullMs > 0 && (
+              <p className="text-xs text-eve-muted">
+                Window opens at:{" "}
+                <span className="text-gray-300">
+                  {new Date(Date.now() + hullMs).toUTCString()}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
-          <label htmlFor="name">POS Name (optional)</label>
+          <label htmlFor="name">Structure Name (optional)</label>
           <input id="name" name="name" placeholder="e.g. IV-4 Control Tower" className="w-full" />
         </div>
 
@@ -113,11 +226,9 @@ export default function NewStructurePage() {
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
         <div className="flex gap-3 justify-end pt-2">
-          <a href="/structures" className="btn-ghost">
-            Cancel
-          </a>
+          <a href="/structures" className="btn-ghost">Cancel</a>
           <button type="submit" className="btn-primary" disabled={isPending}>
-            {isPending ? "Creating…" : "Create POS"}
+            {isPending ? "Creating…" : "Create"}
           </button>
         </div>
       </form>

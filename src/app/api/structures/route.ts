@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { system, distanceFromSun, kind, name, corporation, notes, initialState } = body;
+  const { system, distanceFromSun, kind, name, corporation, notes, initialState, timerExpiresAt } = body;
 
   if (!system || typeof system !== "string" || !system.trim()) {
     return NextResponse.json({ error: "system is required" }, { status: 400 });
@@ -87,12 +87,35 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Create timer if state requires one and timerExpiresAt was provided
+  if (
+    (state === "ARMOR_TIMER" || state === "HULL_TIMER") &&
+    typeof timerExpiresAt === "string"
+  ) {
+    const expiresAt = new Date(timerExpiresAt);
+    const now = new Date();
+    if (!isNaN(expiresAt.getTime()) && expiresAt > now) {
+      const maxFuture = new Date(now.getTime() + 30 * 24 * 3_600_000);
+      if (expiresAt <= maxFuture) {
+        await prisma.timer.create({
+          data: {
+            structureId: structure.id,
+            kind: state === "ARMOR_TIMER" ? "SHIELD_TO_ARMOR" : "ARMOR_TO_HULL",
+            startedAt: now,
+            expiresAt,
+            createdById: session.user.userId,
+          },
+        });
+      }
+    }
+  }
+
   await prisma.structureEvent.create({
     data: {
       structureId: structure.id,
       userId: session.user.userId,
       action: "CREATED",
-      payload: { system: structure.system, distanceFromSun: structure.distanceFromSun, name: structure.name, corporation: structure.corporation },
+      payload: { system: structure.system, distanceFromSun: structure.distanceFromSun, name: structure.name, corporation: structure.corporation, initialState: state } as any,
     },
   });
 

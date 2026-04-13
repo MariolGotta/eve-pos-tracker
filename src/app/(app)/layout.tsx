@@ -57,6 +57,12 @@ export default async function AppLayout({
                 >
                   Notifications
                 </Link>
+                <Link
+                  href="/admin/users"
+                  className="btn-ghost text-xs px-3 py-1.5 text-eve-gold"
+                >
+                  Users
+                </Link>
               </>
             )}
           </nav>
