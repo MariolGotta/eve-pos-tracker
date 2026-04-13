@@ -4,6 +4,7 @@ import StateBadge from "@/components/StateBadge";
 import TimerCountdown from "@/components/TimerCountdown";
 import { availableActions } from "@/lib/state-machine";
 import StructureActions from "./StructureActions";
+import VerifyToggle from "./VerifyToggle";
 
 export const revalidate = 0;
 
@@ -54,18 +55,21 @@ export default async function StructureDetailPage({
           )}
         </div>
 
-        {!isDead && actions.length > 0 && (
-          <StructureActions
-            structureId={structure.id}
-            currentState={structure.currentState}
-            actions={actions}
-            vulnerableWindowEnd={
-              structure.vulnerableWindowEnd
-                ? structure.vulnerableWindowEnd.toISOString()
-                : null
-            }
-          />
-        )}
+        <div className="flex flex-wrap gap-2 items-center">
+          <VerifyToggle structureId={structure.id} initial={structure.needsVerification} />
+          {!isDead && actions.length > 0 && (
+            <StructureActions
+              structureId={structure.id}
+              currentState={structure.currentState}
+              actions={actions}
+              vulnerableWindowEnd={
+                structure.vulnerableWindowEnd
+                  ? structure.vulnerableWindowEnd.toISOString()
+                  : null
+              }
+            />
+          )}
+        </div>
       </div>
 
       {/* Active armor/hull timer countdown */}

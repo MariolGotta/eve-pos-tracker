@@ -17,6 +17,7 @@ interface Props {
   corporation: string | null;
   currentState: StructureState;
   activeTimer?: Timer | null;
+  needsVerification?: boolean;
 }
 
 export default function StructureCard({
@@ -27,6 +28,7 @@ export default function StructureCard({
   corporation,
   currentState,
   activeTimer,
+  needsVerification,
 }: Props) {
   return (
     <Link href={`/structures/${id}`} className="card block hover:border-eve-accent/50 transition-colors">
@@ -35,6 +37,11 @@ export default function StructureCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-white truncate">{system}</span>
             <span className="text-eve-muted text-xs">{distanceFromSun} AU</span>
+            {needsVerification && (
+              <span className="text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded px-1.5 py-0.5 font-semibold">
+                Needs Verification
+              </span>
+            )}
           </div>
           <div className="text-xs text-eve-muted mt-0.5 space-x-2">
             {name && <span>{name}</span>}

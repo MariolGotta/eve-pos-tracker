@@ -55,6 +55,7 @@ model Structure {
   notes          String?        @db.Text
   currentState        StructureState @default(SHIELD)
   vulnerableWindowEnd DateTime?      // set when entering ARMOR/HULL_VULNERABLE, cleared on next transition
+  needsVerification   Boolean        @default(false) // flagged for someone to go check in-game
   deletedAt           DateTime?
   createdById         String
   createdAt      DateTime       @default(now())

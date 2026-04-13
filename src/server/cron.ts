@@ -35,7 +35,7 @@ export async function checkTimers(): Promise<{
     const nextState = STATE_TRANSITION[structure.currentState];
     if (!nextState) continue; // Safety: shouldn't happen
 
-    const vulnerableWindowEnd = new Date(now.getTime() + 15 * 60_000);
+    const vulnerableWindowEnd = new Date(now.getTime() + 12 * 60_000);
 
     await prisma.$transaction([
       prisma.timer.update({

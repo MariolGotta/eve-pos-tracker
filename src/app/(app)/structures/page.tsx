@@ -121,6 +121,7 @@ export default async function StructuresPage({
                     }
                   : null
               }
+              needsVerification={s.needsVerification}
             />
           ))}
         </div>
