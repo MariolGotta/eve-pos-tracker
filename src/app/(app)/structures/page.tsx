@@ -22,19 +22,22 @@ export default async function StructuresPage({
   const { system, state, corp, dead } = searchParams;
   const includeDead = dead === "1";
 
+  const validState =
+    state && ALL_STATES.includes(state as StructureState)
+      ? (state as StructureState)
+      : null;
+
   const structures = await prisma.structure.findMany({
     where: {
       deletedAt: null,
-      ...(system
-        ? { system: { contains: system, mode: "insensitive" } }
+      ...(system ? { system: { contains: system, mode: "insensitive" } } : {}),
+      ...(corp ? { corporation: { contains: corp, mode: "insensitive" } } : {}),
+      // State filter: explicit state takes priority; otherwise hide DEAD unless includeDead
+      ...(validState
+        ? { currentState: validState }
+        : !includeDead
+        ? { currentState: { not: "DEAD" } }
         : {}),
-      ...(state && ALL_STATES.includes(state as StructureState)
-        ? { currentState: state as StructureState }
-        : {}),
-      ...(corp
-        ? { corporation: { contains: corp, mode: "insensitive" } }
-        : {}),
-      ...(!includeDead ? { currentState: { not: "DEAD" } } : {}),
     },
     include: {
       timers: {
@@ -56,7 +59,7 @@ export default async function StructuresPage({
       </div>
 
       {/* Filters */}
-      <form className="flex flex-wrap gap-3">
+      <form method="get" className="flex flex-wrap gap-3">
         <input
           name="system"
           defaultValue={system}
