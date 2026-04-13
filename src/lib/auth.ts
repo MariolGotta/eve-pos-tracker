@@ -39,37 +39,40 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider !== "discord" || !account.access_token) return false;
 
-      // Fetch user's Discord guilds
-      const userGuilds = await fetchUserGuilds(account.access_token);
-      const userGuildIds = new Set(userGuilds.map((g) => g.id));
-
-      // Fetch all allowed guilds with their required roles
-      const allowedGuilds = await prisma.allowedGuild.findMany({
-        select: { guildId: true, requiredRoleIds: true },
-      });
-
-      // Find guilds the user is actually in
-      const matchedGuilds = allowedGuilds.filter((g) => userGuildIds.has(g.guildId));
-      if (matchedGuilds.length === 0) return false;
-
-      // For each matched guild, check role requirements
-      // A guild with no requiredRoleIds blocks access (must explicitly configure roles)
-      let authorized = false;
-      for (const guild of matchedGuilds) {
-        if (guild.requiredRoleIds.length === 0) continue; // no roles configured → nobody enters
-        const memberRoles = await fetchMemberRoles(account.access_token, guild.guildId);
-        const hasRole = guild.requiredRoleIds.some((r) => memberRoles.includes(r));
-        if (hasRole) {
-          authorized = true;
-          break;
-        }
-      }
-      if (!authorized) return false;
-
-      // Upsert user — set role OWNER if matches env
       const discordId = account.providerAccountId;
       const isOwner = discordId === process.env.OWNER_DISCORD_ID;
 
+      // Owner always has access — needed to bootstrap guild/role config
+      if (!isOwner) {
+        // Fetch user's Discord guilds
+        const userGuilds = await fetchUserGuilds(account.access_token);
+        const userGuildIds = new Set(userGuilds.map((g) => g.id));
+
+        // Fetch all allowed guilds with their required roles
+        const allowedGuilds = await prisma.allowedGuild.findMany({
+          select: { guildId: true, requiredRoleIds: true },
+        });
+
+        // Find guilds the user is actually in
+        const matchedGuilds = allowedGuilds.filter((g) => userGuildIds.has(g.guildId));
+        if (matchedGuilds.length === 0) return false;
+
+        // For each matched guild, check role requirements
+        // A guild with no requiredRoleIds blocks access (must explicitly configure roles)
+        let authorized = false;
+        for (const guild of matchedGuilds) {
+          if (guild.requiredRoleIds.length === 0) continue; // no roles configured → nobody enters
+          const memberRoles = await fetchMemberRoles(account.access_token, guild.guildId);
+          const hasRole = guild.requiredRoleIds.some((r) => memberRoles.includes(r));
+          if (hasRole) {
+            authorized = true;
+            break;
+          }
+        }
+        if (!authorized) return false;
+      }
+
+      // Upsert user
       await prisma.user.upsert({
         where: { discordId },
         create: {
