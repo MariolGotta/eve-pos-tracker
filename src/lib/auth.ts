@@ -1,4 +1,3 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { prisma } from "./prisma";
@@ -17,7 +16,6 @@ async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as NextAuthOptions["adapter"],
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,

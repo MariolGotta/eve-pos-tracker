@@ -30,6 +30,9 @@ export default async function StructureDetailPage({
   const activeTimer = structure.timers.find((t) => t.status === "PENDING");
   const actions = availableActions(structure.currentState);
   const isDead = structure.currentState === "DEAD";
+  const isVulnerable =
+    structure.currentState === "ARMOR_VULNERABLE" ||
+    structure.currentState === "HULL_VULNERABLE";
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -56,11 +59,16 @@ export default async function StructureDetailPage({
             structureId={structure.id}
             currentState={structure.currentState}
             actions={actions}
+            vulnerableWindowEnd={
+              structure.vulnerableWindowEnd
+                ? structure.vulnerableWindowEnd.toISOString()
+                : null
+            }
           />
         )}
       </div>
 
-      {/* Active timer */}
+      {/* Active armor/hull timer countdown */}
       {activeTimer && (
         <div className="card border-eve-accent/40 bg-eve-accent/5">
           <p className="text-xs text-eve-muted uppercase tracking-wide mb-1">
@@ -72,6 +80,22 @@ export default async function StructureDetailPage({
           />
           <p className="text-xs text-eve-muted mt-1">
             at {new Date(activeTimer.expiresAt).toUTCString()}
+          </p>
+        </div>
+      )}
+
+      {/* 15-minute attack window countdown */}
+      {isVulnerable && structure.vulnerableWindowEnd && (
+        <div className="card border-red-700/60 bg-red-900/10">
+          <p className="text-xs text-red-400 uppercase tracking-wide font-semibold mb-1">
+            ⚔ Attack Window
+          </p>
+          <TimerCountdown
+            expiresAt={structure.vulnerableWindowEnd.toISOString()}
+            className="text-2xl"
+          />
+          <p className="text-xs text-eve-muted mt-1">
+            Window closes at {new Date(structure.vulnerableWindowEnd).toUTCString()}
           </p>
         </div>
       )}

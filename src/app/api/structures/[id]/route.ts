@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
+function canMutate(session: { user: { userId: string; role: string } }, createdById: string) {
+  return session.user.role === "OWNER" || session.user.userId === createdById;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
@@ -41,16 +45,35 @@ export async function PATCH(
   });
   if (!structure) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json();
+  if (!canMutate(session, structure.createdById)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { name, corporation, notes, distanceFromSun } = body;
+
+  // Validate distanceFromSun if provided
+  let parsedDistance: number | undefined;
+  if (distanceFromSun !== undefined) {
+    parsedDistance = parseFloat(String(distanceFromSun));
+    if (isNaN(parsedDistance) || !isFinite(parsedDistance) || parsedDistance < 0 || parsedDistance > 1_000_000) {
+      return NextResponse.json({ error: "Invalid distanceFromSun value" }, { status: 400 });
+    }
+  }
 
   const updated = await prisma.structure.update({
     where: { id: params.id },
     data: {
-      ...(name !== undefined ? { name: name?.trim() || null } : {}),
-      ...(corporation !== undefined ? { corporation: corporation?.trim() || null } : {}),
-      ...(notes !== undefined ? { notes: notes?.trim() || null } : {}),
-      ...(distanceFromSun !== undefined ? { distanceFromSun: parseFloat(distanceFromSun) } : {}),
+      ...(name !== undefined ? { name: typeof name === "string" ? name.trim() || null : null } : {}),
+      ...(corporation !== undefined ? { corporation: typeof corporation === "string" ? corporation.trim() || null : null } : {}),
+      ...(notes !== undefined ? { notes: typeof notes === "string" ? notes.trim() || null : null } : {}),
+      ...(parsedDistance !== undefined ? { distanceFromSun: parsedDistance } : {}),
     },
   });
 
@@ -59,7 +82,7 @@ export async function PATCH(
       structureId: params.id,
       userId: session.user.userId,
       action: "EDITED",
-      payload: body,
+      payload: { name, corporation, notes, distanceFromSun },
     },
   });
 
@@ -77,6 +100,10 @@ export async function DELETE(
     where: { id: params.id, deletedAt: null },
   });
   if (!structure) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!canMutate(session, structure.createdById)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   await prisma.structure.update({
     where: { id: params.id },

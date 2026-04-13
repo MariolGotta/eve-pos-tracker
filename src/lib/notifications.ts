@@ -69,16 +69,35 @@ export async function sendTimerWarningNotification(
   await postWebhook(webhookUrl, { embeds: [embed] });
 }
 
+const ALLOWED_WEBHOOK_HOSTS = ["discord.com", "discordapp.com", "ptb.discord.com", "canary.discord.com"];
+
+function validateWebhookUrl(rawUrl: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error("Invalid webhook URL");
+  }
+  if (parsed.protocol !== "https:") throw new Error("Webhook URL must use HTTPS");
+  const host = parsed.hostname.toLowerCase();
+  if (!ALLOWED_WEBHOOK_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`))) {
+    throw new Error(`Webhook host not allowed: ${host}`);
+  }
+  return parsed;
+}
+
 async function postWebhook(url: string, body: object): Promise<void> {
   try {
-    // Decrypt if encrypted
-    let webhookUrl = url;
+    // Decrypt stored ciphertext
+    let webhookUrl: string;
     try {
       webhookUrl = decrypt(url);
     } catch {
-      // If decrypt fails, assume it's a plain URL (dev mode)
       webhookUrl = url;
     }
+
+    // SSRF guard — only allow Discord domains over HTTPS
+    validateWebhookUrl(webhookUrl);
 
     const res = await fetch(webhookUrl, {
       method: "POST",
@@ -87,9 +106,9 @@ async function postWebhook(url: string, body: object): Promise<void> {
     });
 
     if (!res.ok) {
-      console.error(`Webhook failed: ${res.status} ${await res.text()}`);
+      console.error(`Webhook failed: ${res.status}`);
     }
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error("Webhook error:", (err as Error).message);
   }
 }

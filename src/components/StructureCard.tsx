@@ -48,8 +48,8 @@ export default function StructureCard({
         <div className="mt-3 flex items-center gap-2 text-xs text-eve-muted border-t border-eve-border pt-2">
           <span>
             {activeTimer.kind === "SHIELD_TO_ARMOR"
-              ? "Armor window"
-              : "Hull window"}
+              ? "Armor starts"
+              : "Hull starts"}
             :
           </span>
           <TimerCountdown expiresAt={activeTimer.expiresAt} />
