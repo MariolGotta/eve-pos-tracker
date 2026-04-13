@@ -42,6 +42,13 @@ export default async function StructureDetailPage({
         <div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-white">{structure.system}</h1>
+            <span className={`text-xs rounded px-2 py-0.5 font-semibold border ${
+              structure.kind === "CITADEL"
+                ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                : "bg-eve-accent/10 text-eve-accent border-eve-accent/30"
+            }`}>
+              {structure.kind}
+            </span>
             <StateBadge state={structure.currentState} />
           </div>
           <p className="text-eve-muted text-sm mt-1">

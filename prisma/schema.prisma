@@ -37,6 +37,11 @@ model User {
 
 // ─── Eve Structures ──────────────────────────────────────────────────────────
 
+enum StructureKind {
+  POS
+  CITADEL
+}
+
 enum StructureState {
   SHIELD           // Normal, full shields
   ARMOR_TIMER      // Shield stripped, waiting for armor window
@@ -47,11 +52,12 @@ enum StructureState {
 }
 
 model Structure {
-  id             String         @id @default(cuid())
-  system         String
+  id              String         @id @default(cuid())
+  kind            StructureKind  @default(POS)
+  system          String
   distanceFromSun Float
-  name           String?
-  corporation    String?
+  name            String?
+  corporation     String?
   notes          String?        @db.Text
   currentState        StructureState @default(SHIELD)
   vulnerableWindowEnd DateTime?      // set when entering ARMOR/HULL_VULNERABLE, cleared on next transition

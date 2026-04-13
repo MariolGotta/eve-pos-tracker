@@ -27,6 +27,7 @@ export default function NewStructurePage() {
         body: JSON.stringify({
           system: form.get("system"),
           distanceFromSun: form.get("distanceFromSun"),
+          kind: form.get("kind") || "POS",
           name: form.get("name") || null,
           corporation: form.get("corporation") || null,
           notes: form.get("notes") || null,
@@ -67,6 +68,14 @@ export default function NewStructurePage() {
             placeholder="e.g. 7.93"
             className="w-full"
           />
+        </div>
+
+        <div>
+          <label htmlFor="kind">Structure Type *</label>
+          <select id="kind" name="kind" className="w-full" defaultValue="POS">
+            <option value="POS">POS (Player-Owned Starbase)</option>
+            <option value="CITADEL">Citadel / Upwell Structure</option>
+          </select>
         </div>
 
         <div>

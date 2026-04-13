@@ -1,6 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { StructureState } from "@prisma/client";
+import { StructureKind, StructureState } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { system, distanceFromSun, name, corporation, notes, initialState } = body;
+  const { system, distanceFromSun, kind, name, corporation, notes, initialState } = body;
 
   if (!system || typeof system !== "string" || !system.trim()) {
     return NextResponse.json({ error: "system is required" }, { status: 400 });
@@ -71,8 +71,12 @@ export async function POST(req: NextRequest) {
     ? (initialState as StructureState)
     : "SHIELD" as StructureState;
 
+  const structureKind: StructureKind =
+    kind === "CITADEL" ? "CITADEL" : "POS";
+
   const structure = await prisma.structure.create({
     data: {
+      kind: structureKind,
       system: system.trim().slice(0, 100),
       distanceFromSun: distance,
       name: typeof name === "string" ? name.trim().slice(0, 200) || null : null,

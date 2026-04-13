@@ -107,6 +107,7 @@ export default async function StructuresPage({
             <StructureCard
               key={s.id}
               id={s.id}
+              kind={s.kind}
               system={s.system}
               distanceFromSun={s.distanceFromSun}
               name={s.name}

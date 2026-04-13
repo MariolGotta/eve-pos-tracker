@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import StructureCard from "@/components/StructureCard";
+import TimerCountdown from "@/components/TimerCountdown";
 import { StructureState } from "@prisma/client";
+import Link from "next/link";
 
 const STATE_PRIORITY: Record<StructureState, number> = {
   HULL_VULNERABLE: 0,
@@ -46,6 +48,14 @@ export default async function DashboardPage() {
       s.currentState === "HULL_VULNERABLE"
   ).length;
 
+  // Next expiring timer across all structures
+  const nextTimer = sorted
+    .filter((s) => s.timers[0])
+    .sort(
+      (a, b) =>
+        a.timers[0].expiresAt.getTime() - b.timers[0].expiresAt.getTime()
+    )[0];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -69,6 +79,33 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Next timer banner */}
+      {nextTimer && (
+        <Link
+          href={`/structures/${nextTimer.id}`}
+          className="block card border-eve-accent/40 bg-eve-accent/5 hover:border-eve-accent/70 transition-colors"
+        >
+          <p className="text-xs text-eve-muted uppercase tracking-wide mb-1">
+            Next timer — {nextTimer.system}
+            {nextTimer.corporation ? ` · ${nextTimer.corporation}` : ""}
+          </p>
+          <div className="flex items-baseline gap-3">
+            <TimerCountdown
+              expiresAt={nextTimer.timers[0].expiresAt.toISOString()}
+              className="text-2xl"
+            />
+            <span className="text-xs text-eve-muted">
+              {nextTimer.timers[0].kind === "SHIELD_TO_ARMOR"
+                ? "until armor window"
+                : "until hull window"}
+            </span>
+          </div>
+          <p className="text-xs text-eve-muted mt-1">
+            {new Date(nextTimer.timers[0].expiresAt).toUTCString()}
+          </p>
+        </Link>
+      )}
+
       {sorted.length === 0 ? (
         <div className="card text-center py-12 text-eve-muted">
           <p>No active structures. <a href="/structures/new" className="text-eve-accent hover:underline">Add one</a>.</p>
@@ -79,11 +116,13 @@ export default async function DashboardPage() {
             <StructureCard
               key={s.id}
               id={s.id}
+              kind={s.kind}
               system={s.system}
               distanceFromSun={s.distanceFromSun}
               name={s.name}
               corporation={s.corporation}
               currentState={s.currentState}
+              needsVerification={s.needsVerification}
               activeTimer={
                 s.timers[0]
                   ? {
