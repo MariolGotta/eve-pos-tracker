@@ -24,6 +24,7 @@ export default async function GuildsPage() {
         initialGuilds={guilds.map((g) => ({
           guildId: g.guildId,
           name: g.name,
+          requiredRoleIds: g.requiredRoleIds,
           addedAt: g.addedAt.toISOString(),
         }))}
       />

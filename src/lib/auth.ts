@@ -15,13 +15,22 @@ async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
   return res.json();
 }
 
+async function fetchMemberRoles(accessToken: string, guildId: string): Promise<string[]> {
+  const res = await fetch(`https://discord.com/api/users/@me/guilds/${guildId}/member`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return [];
+  const member = await res.json();
+  return Array.isArray(member.roles) ? member.roles : [];
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
-        params: { scope: "identify guilds" },
+        params: { scope: "identify guilds guilds.members.read" },
       },
     }),
   ],
@@ -32,16 +41,30 @@ export const authOptions: NextAuthOptions = {
 
       // Fetch user's Discord guilds
       const userGuilds = await fetchUserGuilds(account.access_token);
-      const userGuildIds = userGuilds.map((g) => g.id);
+      const userGuildIds = new Set(userGuilds.map((g) => g.id));
 
-      // Check against allowed guilds in DB
+      // Fetch all allowed guilds with their required roles
       const allowedGuilds = await prisma.allowedGuild.findMany({
-        select: { guildId: true },
+        select: { guildId: true, requiredRoleIds: true },
       });
-      const allowedIds = allowedGuilds.map((g) => g.guildId);
 
-      const hasAccess = userGuildIds.some((id) => allowedIds.includes(id));
-      if (!hasAccess) return false;
+      // Find guilds the user is actually in
+      const matchedGuilds = allowedGuilds.filter((g) => userGuildIds.has(g.guildId));
+      if (matchedGuilds.length === 0) return false;
+
+      // For each matched guild, check role requirements
+      // A guild with no requiredRoleIds blocks access (must explicitly configure roles)
+      let authorized = false;
+      for (const guild of matchedGuilds) {
+        if (guild.requiredRoleIds.length === 0) continue; // no roles configured → nobody enters
+        const memberRoles = await fetchMemberRoles(account.access_token, guild.guildId);
+        const hasRole = guild.requiredRoleIds.some((r) => memberRoles.includes(r));
+        if (hasRole) {
+          authorized = true;
+          break;
+        }
+      }
+      if (!authorized) return false;
 
       // Upsert user — set role OWNER if matches env
       const discordId = account.providerAccountId;

@@ -82,7 +82,8 @@ export async function PATCH(
       structureId: params.id,
       userId: session.user.userId,
       action: "EDITED",
-      payload: { name, corporation, notes, distanceFromSun },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload: { name: name ?? null, corporation: corporation ?? null, notes: notes ?? null, distanceFromSun: distanceFromSun ?? null } as any,
     },
   });
 

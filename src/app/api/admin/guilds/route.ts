@@ -22,15 +22,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { guildId, name } = await req.json();
-  if (!guildId || !name) {
-    return NextResponse.json({ error: "guildId and name are required" }, { status: 400 });
+  const body = await req.json();
+  const { guildId, name, requiredRoleIds } = body;
+
+  if (!guildId || typeof guildId !== "string" || !guildId.trim()) {
+    return NextResponse.json({ error: "guildId is required" }, { status: 400 });
+  }
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
+  const roleIds: string[] = Array.isArray(requiredRoleIds)
+    ? requiredRoleIds.filter((r): r is string => typeof r === "string" && r.trim() !== "")
+    : [];
+
   const guild = await prisma.allowedGuild.upsert({
-    where: { guildId },
-    create: { guildId, name },
-    update: { name },
+    where: { guildId: guildId.trim() },
+    create: { guildId: guildId.trim(), name: name.trim(), requiredRoleIds: roleIds },
+    update: { name: name.trim(), requiredRoleIds: roleIds },
   });
 
   return NextResponse.json(guild, { status: 201 });

@@ -10,10 +10,11 @@ datasource db {
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model AllowedGuild {
-  guildId              String               @id
-  name                 String
-  addedAt              DateTime             @default(now())
-  notificationConfigs  NotificationConfig[]
+  guildId             String               @id
+  name                String
+  requiredRoleIds     String[]             @default([])
+  addedAt             DateTime             @default(now())
+  notificationConfigs NotificationConfig[]
 }
 
 enum Role {
