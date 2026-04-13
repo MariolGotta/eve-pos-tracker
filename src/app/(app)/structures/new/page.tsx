@@ -2,6 +2,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+const INITIAL_STATES = [
+  { value: "SHIELD", label: "Shield (full shields)" },
+  { value: "ARMOR_TIMER", label: "Armor Timer (waiting for armor window)" },
+  { value: "ARMOR_VULNERABLE", label: "Armor Vulnerable (armor window open)" },
+  { value: "HULL_TIMER", label: "Hull Timer (waiting for hull window)" },
+  { value: "HULL_VULNERABLE", label: "Hull Vulnerable (hull window open)" },
+];
+
 export default function NewStructurePage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -22,6 +30,7 @@ export default function NewStructurePage() {
           name: form.get("name") || null,
           corporation: form.get("corporation") || null,
           notes: form.get("notes") || null,
+          initialState: form.get("initialState") || "SHIELD",
         }),
       });
 
@@ -58,6 +67,17 @@ export default function NewStructurePage() {
             placeholder="e.g. 7.93"
             className="w-full"
           />
+        </div>
+
+        <div>
+          <label htmlFor="initialState">Current State *</label>
+          <select id="initialState" name="initialState" className="w-full" defaultValue="SHIELD">
+            {INITIAL_STATES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

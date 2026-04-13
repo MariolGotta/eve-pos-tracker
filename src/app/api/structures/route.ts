@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { system, distanceFromSun, name, corporation, notes } = body;
+  const { system, distanceFromSun, name, corporation, notes, initialState } = body;
 
   if (!system || typeof system !== "string" || !system.trim()) {
     return NextResponse.json({ error: "system is required" }, { status: 400 });
@@ -66,6 +66,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "distanceFromSun must be a positive number" }, { status: 400 });
   }
 
+  const VALID_INITIAL_STATES = ["SHIELD", "ARMOR_TIMER", "ARMOR_VULNERABLE", "HULL_TIMER", "HULL_VULNERABLE"];
+  const state = typeof initialState === "string" && VALID_INITIAL_STATES.includes(initialState)
+    ? (initialState as StructureState)
+    : "SHIELD" as StructureState;
+
   const structure = await prisma.structure.create({
     data: {
       system: system.trim().slice(0, 100),
@@ -73,6 +78,7 @@ export async function POST(req: NextRequest) {
       name: typeof name === "string" ? name.trim().slice(0, 200) || null : null,
       corporation: typeof corporation === "string" ? corporation.trim().slice(0, 200) || null : null,
       notes: typeof notes === "string" ? notes.trim().slice(0, 2000) || null : null,
+      currentState: state,
       createdById: session.user.userId,
     },
   });
