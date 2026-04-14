@@ -65,7 +65,7 @@ export async function checkTimers(): Promise<{
       where: { enabled: true },
     });
     for (const config of configs) {
-      await sendVulnerableNotification(config.webhookUrl, structure, timer);
+      await sendVulnerableNotification(config.webhookUrls, structure, timer);
     }
 
     expired++;
@@ -104,7 +104,7 @@ export async function checkTimers(): Promise<{
       for (const config of allConfigs) {
         if (!config.notifyMinutesBefore.includes(minutes)) continue;
         await sendTimerWarningNotification(
-          config.webhookUrl,
+          config.webhookUrls,
           structure,
           timer,
           minutes

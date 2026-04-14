@@ -23,7 +23,7 @@ export default async function NotificationsPage() {
         guilds={guilds.map((g) => ({ guildId: g.guildId, name: g.name }))}
         configs={configs.map((c) => ({
           guildId: c.guildId,
-          webhookSet: !!c.webhookUrl,
+          webhookCount: c.webhookUrls.length,
           notifyMinutesBefore: c.notifyMinutesBefore,
           enabled: c.enabled,
         }))}

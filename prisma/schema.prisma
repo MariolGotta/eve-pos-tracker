@@ -127,7 +127,7 @@ model StructureEvent {
 model NotificationConfig {
   id                   String       @id @default(cuid())
   guildId              String
-  webhookUrl           String       @db.Text // stored encrypted
+  webhookUrls          String[]     // each entry stored encrypted
   notifyMinutesBefore  Int[]        @default([60, 15])
   enabled              Boolean      @default(true)
 

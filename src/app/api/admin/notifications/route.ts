@@ -16,11 +16,14 @@ function isValidDiscordWebhookUrl(raw: string): boolean {
   }
 }
 
-export async function GET(_req: NextRequest) {
+async function requireOwner() {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "OWNER") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  if (!session || session.user.role !== "OWNER") return null;
+  return session;
+}
+
+export async function GET(_req: NextRequest) {
+  if (!(await requireOwner())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const configs = await prisma.notificationConfig.findMany({
     include: { guild: { select: { name: true } } },
@@ -29,87 +32,98 @@ export async function GET(_req: NextRequest) {
   return NextResponse.json(
     configs.map((c) => ({
       ...c,
-      webhookUrl: c.webhookUrl ? "***" : null,
+      webhookUrls: c.webhookUrls.map((_, i) => `Webhook #${i + 1}`),
+      webhookCount: c.webhookUrls.length,
     }))
   );
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "OWNER") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  if (!(await requireOwner())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  try { body = await req.json(); } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { guildId, webhookUrl, notifyMinutesBefore, enabled } = body;
+  const { guildId, action, webhookUrl, removeIndex, notifyMinutesBefore, enabled } = body as {
+    guildId?: string;
+    action?: string;
+    webhookUrl?: string;
+    removeIndex?: number;
+    notifyMinutesBefore?: number[];
+    enabled?: boolean;
+  };
 
-  if (!guildId || typeof guildId !== "string") {
-    return NextResponse.json({ error: "guildId is required" }, { status: 400 });
-  }
-
-  // Validate webhook URL if provided
-  if (webhookUrl && webhookUrl !== "***") {
-    if (typeof webhookUrl !== "string" || !isValidDiscordWebhookUrl(webhookUrl)) {
-      return NextResponse.json(
-        { error: "webhookUrl must be a valid HTTPS Discord webhook URL" },
-        { status: 400 }
-      );
-    }
-  }
-
-  // Validate notifyMinutesBefore
-  let parsedMinutes: number[] | undefined;
-  if (notifyMinutesBefore !== undefined) {
-    if (!Array.isArray(notifyMinutesBefore)) {
-      return NextResponse.json({ error: "notifyMinutesBefore must be an array" }, { status: 400 });
-    }
-    parsedMinutes = [...new Set(
-      (notifyMinutesBefore as unknown[])
-        .map((v) => parseInt(String(v)))
-        .filter((n) => !isNaN(n) && n > 0 && n <= 1440) // 1 min to 24h
-    )].sort((a, b) => b - a);
-
-    if (parsedMinutes.length === 0) {
-      return NextResponse.json(
-        { error: "notifyMinutesBefore must contain at least one value between 1 and 1440" },
-        { status: 400 }
-      );
-    }
-  }
+  if (!guildId) return NextResponse.json({ error: "guildId required" }, { status: 400 });
 
   const guild = await prisma.allowedGuild.findUnique({ where: { guildId } });
   if (!guild) return NextResponse.json({ error: "Guild not found" }, { status: 404 });
 
-  const existing = await prisma.notificationConfig.findUnique({ where: { guildId } });
+  // Ensure config row exists
+  let config = await prisma.notificationConfig.findUnique({ where: { guildId } });
+  if (!config) {
+    config = await prisma.notificationConfig.create({
+      data: { guildId, webhookUrls: [], notifyMinutesBefore: [60, 15], enabled: true },
+    });
+  }
 
-  const webhookData =
-    webhookUrl && webhookUrl !== "***"
-      ? { webhookUrl: encrypt(String(webhookUrl)) }
-      : {};
+  if (action === "add_webhook") {
+    if (!webhookUrl || !isValidDiscordWebhookUrl(webhookUrl)) {
+      return NextResponse.json({ error: "Invalid Discord webhook URL" }, { status: 400 });
+    }
+    if (config.webhookUrls.length >= 10) {
+      return NextResponse.json({ error: "Maximum 10 webhooks per server" }, { status: 400 });
+    }
+    const updated = await prisma.notificationConfig.update({
+      where: { guildId },
+      data: { webhookUrls: { push: encrypt(webhookUrl) } },
+    });
+    return NextResponse.json({ webhookCount: updated.webhookUrls.length });
+  }
 
-  const config = existing
-    ? await prisma.notificationConfig.update({
-        where: { guildId },
-        data: {
-          ...webhookData,
-          ...(parsedMinutes !== undefined ? { notifyMinutesBefore: parsedMinutes } : {}),
-          ...(typeof enabled === "boolean" ? { enabled } : {}),
-        },
-      })
-    : await prisma.notificationConfig.create({
-        data: {
-          guildId,
-          webhookUrl: webhookUrl ? encrypt(String(webhookUrl)) : "",
-          notifyMinutesBefore: parsedMinutes ?? [60, 15],
-          enabled: typeof enabled === "boolean" ? enabled : true,
-        },
-      });
+  if (action === "remove_webhook") {
+    if (typeof removeIndex !== "number" || removeIndex < 0 || removeIndex >= config.webhookUrls.length) {
+      return NextResponse.json({ error: "Invalid removeIndex" }, { status: 400 });
+    }
+    const newUrls = config.webhookUrls.filter((_, i) => i !== removeIndex);
+    const updated = await prisma.notificationConfig.update({
+      where: { guildId },
+      data: { webhookUrls: newUrls },
+    });
+    return NextResponse.json({ webhookCount: updated.webhookUrls.length });
+  }
 
-  return NextResponse.json({ ...config, webhookUrl: "***" });
+  if (action === "update_settings") {
+    let parsedMinutes: number[] | undefined;
+    if (notifyMinutesBefore !== undefined) {
+      if (!Array.isArray(notifyMinutesBefore)) {
+        return NextResponse.json({ error: "notifyMinutesBefore must be an array" }, { status: 400 });
+      }
+      parsedMinutes = [...new Set(
+        notifyMinutesBefore
+          .map((v) => parseInt(String(v)))
+          .filter((n) => !isNaN(n) && n > 0 && n <= 1440)
+      )].sort((a, b) => b - a);
+      if (parsedMinutes.length === 0) {
+        return NextResponse.json({ error: "At least one valid minute value required" }, { status: 400 });
+      }
+    }
+
+    const updated = await prisma.notificationConfig.update({
+      where: { guildId },
+      data: {
+        ...(parsedMinutes !== undefined ? { notifyMinutesBefore: parsedMinutes } : {}),
+        ...(typeof enabled === "boolean" ? { enabled } : {}),
+      },
+    });
+
+    return NextResponse.json({
+      notifyMinutesBefore: updated.notifyMinutesBefore,
+      enabled: updated.enabled,
+      webhookCount: updated.webhookUrls.length,
+    });
+  }
+
+  return NextResponse.json({ error: "Unknown action. Use: add_webhook, remove_webhook, update_settings" }, { status: 400 });
 }

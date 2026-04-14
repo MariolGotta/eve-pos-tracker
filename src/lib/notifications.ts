@@ -14,10 +14,11 @@ function kindToVulnerableState(kind: TimerKind): string {
 }
 
 export async function sendVulnerableNotification(
-  webhookUrl: string,
+  webhookUrls: string[],
   structure: Structure,
   timer: Timer
 ): Promise<void> {
+  if (webhookUrls.length === 0) return;
   const state = kindToVulnerableState(timer.kind);
   const label = stateLabel(state as never);
 
@@ -37,15 +38,16 @@ export async function sendVulnerableNotification(
     footer: { text: "EVE POS Tracker" },
   };
 
-  await postWebhook(webhookUrl, { embeds: [embed] });
+  await Promise.allSettled(webhookUrls.map((url) => postWebhook(url, { embeds: [embed] })));
 }
 
 export async function sendTimerWarningNotification(
-  webhookUrl: string,
+  webhookUrls: string[],
   structure: Structure,
   timer: Timer,
   minutesLeft: number
 ): Promise<void> {
+  if (webhookUrls.length === 0) return;
   const state = kindToVulnerableState(timer.kind);
   const label = stateLabel(state as never);
   const expiresAt = new Date(timer.expiresAt).toUTCString();
@@ -66,7 +68,7 @@ export async function sendTimerWarningNotification(
     footer: { text: "EVE POS Tracker" },
   };
 
-  await postWebhook(webhookUrl, { embeds: [embed] });
+  await Promise.allSettled(webhookUrls.map((url) => postWebhook(url, { embeds: [embed] })));
 }
 
 const ALLOWED_WEBHOOK_HOSTS = ["discord.com", "discordapp.com", "ptb.discord.com", "canary.discord.com"];
