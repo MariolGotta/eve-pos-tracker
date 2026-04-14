@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import SystemAutocomplete from "@/components/SystemAutocomplete";
 
 const INITIAL_STATES = [
   { value: "SHIELD", label: "Shield (full shields)" },
@@ -15,6 +16,7 @@ export default function NewStructurePage() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [initialState, setInitialState] = useState("SHIELD");
+  const [system, setSystem] = useState("");
 
   // Armor timer: hours + minutes
   const [armorH, setArmorH] = useState(23);
@@ -33,6 +35,10 @@ export default function NewStructurePage() {
     setError("");
     const form = new FormData(e.currentTarget);
 
+    if (!system.trim()) {
+      setError("Please enter a solar system.");
+      return;
+    }
     if (initialState === "ARMOR_TIMER" && armorMs <= 0) {
       setError("Please enter the remaining time until the armor window.");
       return;
@@ -54,7 +60,7 @@ export default function NewStructurePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: form.get("system"),
+          system: system.trim(),
           distanceFromSun: form.get("distanceFromSun"),
           kind: form.get("kind") || "POS",
           name: form.get("name") || null,
@@ -83,7 +89,12 @@ export default function NewStructurePage() {
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label htmlFor="system">Solar System *</label>
-          <input id="system" name="system" required placeholder="e.g. Jita" className="w-full" />
+          <SystemAutocomplete
+            id="system"
+            value={system}
+            onChange={setSystem}
+            required
+          />
         </div>
 
         <div>

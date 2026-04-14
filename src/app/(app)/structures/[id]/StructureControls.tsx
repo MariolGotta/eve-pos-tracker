@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import SystemAutocomplete from "@/components/SystemAutocomplete";
 
 interface Structure {
   id: string;
@@ -62,7 +63,7 @@ function EditDialog({
 
         <div>
           <label>Solar System *</label>
-          <input value={system} onChange={(e) => setSystem(e.target.value)} className="w-full" />
+          <SystemAutocomplete value={system} onChange={setSystem} required />
         </div>
 
         <div>
