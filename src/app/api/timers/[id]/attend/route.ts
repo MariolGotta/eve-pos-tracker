@@ -20,7 +20,7 @@ export async function POST(
     return NextResponse.json({ error: "Timer is no longer active" }, { status: 400 });
   }
 
-  const userId = session.user.id;
+  const userId = session.user.userId;
 
   const existing = await prisma.timerAttendee.findUnique({
     where: { timerId_userId: { timerId: params.id, userId } },

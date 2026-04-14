@@ -125,7 +125,7 @@ export default async function StructureDetailPage({
             avatarUrl: a.user.avatarUrl,
             discordId: a.user.discordId,
           }))}
-          currentUserId={session.user.id}
+          currentUserId={session.user.userId}
         />
       )}
 
