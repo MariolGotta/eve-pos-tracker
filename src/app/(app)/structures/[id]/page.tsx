@@ -24,9 +24,9 @@ export default async function StructureDetailPage({
       events: {
         orderBy: { createdAt: "desc" },
         take: 30,
-        include: { user: { select: { username: true, avatarUrl: true } } },
+        include: { user: { select: { username: true, avatarUrl: true, discordId: true } } },
       },
-      createdBy: { select: { username: true } },
+      createdBy: { select: { username: true, discordId: true } },
     },
   });
 
@@ -191,7 +191,17 @@ export default async function StructureDetailPage({
                 <span className="font-semibold text-gray-300 uppercase">
                   {event.action.replace(/_/g, " ")}
                 </span>
-                <span className="text-gray-500">by {event.user.username}</span>
+                <span className="text-gray-500">
+                  by{" "}
+                  <a
+                    href={`https://discord.com/users/${event.user.discordId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-eve-accent hover:underline"
+                  >
+                    {event.user.username}
+                  </a>
+                </span>
               </div>
             ))}
           </div>
@@ -199,7 +209,16 @@ export default async function StructureDetailPage({
       )}
 
       <div className="text-xs text-eve-muted pt-2 border-t border-eve-border">
-        Created by {structure.createdBy.username} · {new Date(structure.createdAt).toUTCString()}
+        Created by{" "}
+        <a
+          href={`https://discord.com/users/${structure.createdBy.discordId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-eve-accent hover:underline"
+        >
+          {structure.createdBy.username}
+        </a>
+        {" "}· {new Date(structure.createdAt).toUTCString()}
       </div>
     </div>
   );
