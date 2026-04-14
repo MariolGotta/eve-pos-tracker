@@ -22,11 +22,15 @@ export async function middleware(req: NextRequest) {
 
   // All other routes require a valid session
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token) {
+
+  // No token or token was invalidated by guild/role re-check
+  if (!token || token.invalidated) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const loginUrl = new URL("/login", req.url);
+    // Append callbackUrl so user lands back here after re-login
+    loginUrl.searchParams.set("callbackUrl", req.url);
     return NextResponse.redirect(loginUrl);
   }
 
