@@ -4,6 +4,7 @@ import TimerCountdown from "@/components/TimerCountdown";
 import { StructureState } from "@prisma/client";
 import Link from "next/link";
 
+// Used only for structures without an active timer (VULNERABLE / SHIELD)
 const STATE_PRIORITY: Record<StructureState, number> = {
   HULL_VULNERABLE: 0,
   ARMOR_VULNERABLE: 1,
@@ -31,12 +32,16 @@ export default async function DashboardPage() {
     orderBy: { updatedAt: "desc" },
   });
 
-  const sorted = structures.sort(
-    (a, b) =>
-      STATE_PRIORITY[a.currentState] - STATE_PRIORITY[b.currentState] ||
-      (a.timers[0]?.expiresAt.getTime() ?? Infinity) -
-        (b.timers[0]?.expiresAt.getTime() ?? Infinity)
-  );
+  // Sort: structures with active timer → by time remaining (soonest first)
+  //       structures without timer (VULNERABLE / SHIELD) → by state urgency after
+  const sorted = structures.sort((a, b) => {
+    const aTime = a.timers[0]?.expiresAt.getTime() ?? null;
+    const bTime = b.timers[0]?.expiresAt.getTime() ?? null;
+    if (aTime !== null && bTime !== null) return aTime - bTime;
+    if (aTime !== null) return -1; // a has timer, b doesn't → a first
+    if (bTime !== null) return 1;  // b has timer, a doesn't → b first
+    return STATE_PRIORITY[a.currentState] - STATE_PRIORITY[b.currentState];
+  });
 
   const timerCount = sorted.filter(
     (s) => s.currentState === "ARMOR_TIMER" || s.currentState === "HULL_TIMER"
