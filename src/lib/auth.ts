@@ -15,23 +15,37 @@ async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
   return res.json();
 }
 
-async function fetchMemberRoles(accessToken: string, guildId: string): Promise<string[]> {
+interface MemberInfo {
+  roles: string[];
+  nick: string | null; // server-specific nickname
+}
+
+async function fetchMemberInfo(accessToken: string, guildId: string): Promise<MemberInfo> {
   const res = await fetch(`https://discord.com/api/users/@me/guilds/${guildId}/member`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { roles: [], nick: null };
   const member = await res.json();
-  return Array.isArray(member.roles) ? member.roles : [];
+  return {
+    roles: Array.isArray(member.roles) ? member.roles : [],
+    nick: typeof member.nick === "string" && member.nick.trim() ? member.nick.trim() : null,
+  };
+}
+
+interface GuildAccessResult {
+  authorized: boolean;
+  displayName: string | null; // server nickname from the first matched guild
 }
 
 /**
  * Checks if a Discord user (via their OAuth access token) is authorized.
  * Returns true only if the user is in at least one allowed guild AND has a required role.
+ * Also returns the server nickname if available, for display purposes.
  * On any API failure, denies access (fail-closed).
  */
-async function checkGuildAccess(accessToken: string): Promise<boolean> {
+async function checkGuildAccess(accessToken: string): Promise<GuildAccessResult> {
   const userGuilds = await fetchUserGuilds(accessToken);
-  if (userGuilds.length === 0) return false;
+  if (userGuilds.length === 0) return { authorized: false, displayName: null };
 
   const userGuildIds = new Set(userGuilds.map((g) => g.id));
 
@@ -40,16 +54,16 @@ async function checkGuildAccess(accessToken: string): Promise<boolean> {
   });
 
   const matchedGuilds = allowedGuilds.filter((g) => userGuildIds.has(g.guildId));
-  if (matchedGuilds.length === 0) return false;
+  if (matchedGuilds.length === 0) return { authorized: false, displayName: null };
 
   for (const guild of matchedGuilds) {
-    if (guild.requiredRoleIds.length === 0) continue; // no roles configured → nobody enters
-    const memberRoles = await fetchMemberRoles(accessToken, guild.guildId);
-    const hasRole = guild.requiredRoleIds.some((r) => memberRoles.includes(r));
-    if (hasRole) return true;
+    if (guild.requiredRoleIds.length === 0) continue;
+    const { roles, nick } = await fetchMemberInfo(accessToken, guild.guildId);
+    const hasRole = guild.requiredRoleIds.some((r) => roles.includes(r));
+    if (hasRole) return { authorized: true, displayName: nick };
   }
 
-  return false;
+  return { authorized: false, displayName: null };
 }
 
 // Re-check guild/role membership every 30 minutes
@@ -76,23 +90,27 @@ export const authOptions: NextAuthOptions = {
       const discordId = account.providerAccountId;
       const isOwner = discordId === process.env.OWNER_DISCORD_ID;
 
-      // Owner always has access — needed to bootstrap guild/role config
+      let displayName: string | null = null;
+
       if (!isOwner) {
-        const authorized = await checkGuildAccess(account.access_token);
-        if (!authorized) return false;
+        const result = await checkGuildAccess(account.access_token);
+        if (!result.authorized) return false;
+        displayName = result.displayName;
       }
 
-      // Upsert user
+      // Upsert user — displayName: guild nick > global display name (user.name) > keep existing
       await prisma.user.upsert({
         where: { discordId },
         create: {
           discordId,
           username: user.name ?? "Unknown",
+          displayName: displayName ?? user.name ?? null,
           avatarUrl: user.image ?? null,
           role: isOwner ? "OWNER" : "MEMBER",
         },
         update: {
           username: user.name ?? "Unknown",
+          displayName: displayName ?? user.name ?? undefined,
           avatarUrl: user.image ?? null,
           role: isOwner ? "OWNER" : "MEMBER",
         },
@@ -126,10 +144,16 @@ export const authOptions: NextAuthOptions = {
         Date.now() - token.guildCheckedAt > RECHECK_INTERVAL_MS
       ) {
         try {
-          const authorized = await checkGuildAccess(token.accessToken as string);
-          if (!authorized) {
-            // Invalidate the token — middleware will redirect to login
+          const result = await checkGuildAccess(token.accessToken as string);
+          if (!result.authorized) {
             return { ...token, invalidated: true };
+          }
+          // Refresh displayName in DB if nick changed
+          if (result.displayName && token.userId) {
+            await prisma.user.update({
+              where: { id: token.userId as string },
+              data: { displayName: result.displayName },
+            });
           }
           token.guildCheckedAt = Date.now();
         } catch {

@@ -26,7 +26,7 @@ export default async function StructureDetailPage({
         take: 20,
         include: {
           attendees: {
-            include: { user: { select: { id: true, username: true, avatarUrl: true, discordId: true } } },
+            include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true, discordId: true } } },
             orderBy: { createdAt: "asc" },
           },
         },
@@ -34,9 +34,9 @@ export default async function StructureDetailPage({
       events: {
         orderBy: { createdAt: "desc" },
         take: 30,
-        include: { user: { select: { username: true, avatarUrl: true, discordId: true } } },
+        include: { user: { select: { username: true, displayName: true, avatarUrl: true, discordId: true } } },
       },
-      createdBy: { select: { username: true, discordId: true } },
+      createdBy: { select: { username: true, displayName: true, discordId: true } },
     },
   });
 
@@ -121,7 +121,7 @@ export default async function StructureDetailPage({
           timerId={activeTimer.id}
           initialAttendees={activeTimer.attendees.map((a) => ({
             userId: a.user.id,
-            username: a.user.username,
+            username: a.user.displayName ?? a.user.username,
             avatarUrl: a.user.avatarUrl,
             discordId: a.user.discordId,
           }))}
@@ -226,7 +226,7 @@ export default async function StructureDetailPage({
                     rel="noopener noreferrer"
                     className="text-eve-accent hover:underline"
                   >
-                    {event.user.username}
+                    {event.user.displayName ?? event.user.username}
                   </a>
                 </span>
               </div>
@@ -243,7 +243,7 @@ export default async function StructureDetailPage({
           rel="noopener noreferrer"
           className="text-eve-accent hover:underline"
         >
-          {structure.createdBy.username}
+          {structure.createdBy.displayName ?? structure.createdBy.username}
         </a>
         {" "}· {new Date(structure.createdAt).toUTCString()}
       </div>

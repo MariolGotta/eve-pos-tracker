@@ -16,6 +16,7 @@ export default async function UsersPage() {
       id: true,
       discordId: true,
       username: true,
+      displayName: true,
       avatarUrl: true,
       role: true,
       createdAt: true,
@@ -49,7 +50,10 @@ export default async function UsersPage() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-white">{u.username}</span>
+                <span className="font-semibold text-white">{u.displayName ?? u.username}</span>
+                {u.displayName && u.displayName !== u.username && (
+                  <span className="text-xs text-eve-muted font-mono">@{u.username}</span>
+                )}
                 {u.role === "OWNER" && (
                   <span className="text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded px-1.5 py-0.5 font-semibold">
                     OWNER

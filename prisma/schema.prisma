@@ -24,12 +24,13 @@ enum Role {
 }
 
 model User {
-  id         String           @id @default(cuid())
-  discordId  String           @unique
-  username   String
-  avatarUrl  String?
-  role       Role             @default(MEMBER)
-  createdAt  DateTime         @default(now())
+  id          String           @id @default(cuid())
+  discordId   String           @unique
+  username    String
+  displayName String?          // guild nickname or global display name, updated on each login
+  avatarUrl   String?
+  role        Role             @default(MEMBER)
+  createdAt   DateTime         @default(now())
   structures       Structure[]
   timers           Timer[]
   events           StructureEvent[]
