@@ -30,9 +30,10 @@ model User {
   avatarUrl  String?
   role       Role             @default(MEMBER)
   createdAt  DateTime         @default(now())
-  structures Structure[]
-  timers     Timer[]
-  events     StructureEvent[]
+  structures       Structure[]
+  timers           Timer[]
+  events           StructureEvent[]
+  timerAttendances TimerAttendee[]
 }
 
 // ─── Eve Structures ──────────────────────────────────────────────────────────
@@ -101,12 +102,26 @@ model Timer {
   createdById String
   createdAt   DateTime    @default(now())
 
-  structure Structure @relation(fields: [structureId], references: [id])
-  createdBy User      @relation(fields: [createdById], references: [id])
+  structure  Structure       @relation(fields: [structureId], references: [id])
+  createdBy  User            @relation(fields: [createdById], references: [id])
+  attendees  TimerAttendee[]
 
   @@index([expiresAt])
   @@index([status])
   @@index([structureId, status])
+}
+
+model TimerAttendee {
+  id        String   @id @default(cuid())
+  timerId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  timer Timer @relation(fields: [timerId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([timerId, userId])
+  @@index([timerId])
 }
 
 model StructureEvent {

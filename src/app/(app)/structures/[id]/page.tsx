@@ -9,6 +9,7 @@ import StructureActions from "./StructureActions";
 import VerifyToggle from "./VerifyToggle";
 import StructureControls from "./StructureControls";
 import LocalTime from "@/components/LocalTime";
+import AttendanceWidget from "./AttendanceWidget";
 
 export const revalidate = 0;
 
@@ -20,7 +21,16 @@ export default async function StructureDetailPage({
   const structure = await prisma.structure.findFirst({
     where: { id: params.id, deletedAt: null },
     include: {
-      timers: { orderBy: { createdAt: "desc" }, take: 20 },
+      timers: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          attendees: {
+            include: { user: { select: { id: true, username: true, avatarUrl: true, discordId: true } } },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
       events: {
         orderBy: { createdAt: "desc" },
         take: 30,
@@ -103,6 +113,20 @@ export default async function StructureDetailPage({
             Local: <LocalTime expiresAt={activeTimer.expiresAt.toISOString()} />
           </p>
         </div>
+      )}
+
+      {/* Attendance for active timer */}
+      {activeTimer && session && (
+        <AttendanceWidget
+          timerId={activeTimer.id}
+          initialAttendees={activeTimer.attendees.map((a) => ({
+            userId: a.user.id,
+            username: a.user.username,
+            avatarUrl: a.user.avatarUrl,
+            discordId: a.user.discordId,
+          }))}
+          currentUserId={session.user.id}
+        />
       )}
 
       {/* 15-minute attack window countdown */}
