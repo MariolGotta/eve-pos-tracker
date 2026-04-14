@@ -3,6 +3,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import SystemAutocomplete from "@/components/SystemAutocomplete";
 
+interface ActiveTimer {
+  id: string;
+  expiresAt: string; // ISO string
+  kind: string; // SHIELD_TO_ARMOR | ARMOR_TO_HULL
+}
+
 interface Structure {
   id: string;
   system: string;
@@ -11,9 +17,19 @@ interface Structure {
   corporation: string | null;
   distanceFromSun: number;
   notes: string | null;
+  activeTimer?: ActiveTimer | null;
 }
 
 // ── Edit Dialog ───────────────────────────────────────────────────────────────
+// Convert ms remaining into d/h/m parts (clamped to 0)
+function msToparts(ms: number) {
+  const total = Math.max(0, ms);
+  const d = Math.floor(total / 86_400_000);
+  const h = Math.floor((total % 86_400_000) / 3_600_000);
+  const m = Math.floor((total % 3_600_000) / 60_000);
+  return { d, h, m };
+}
+
 function EditDialog({
   structure,
   onClose,
@@ -31,10 +47,29 @@ function EditDialog({
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  // Timer duration state — pre-populate from current expiresAt
+  const initialRemaining = structure.activeTimer
+    ? new Date(structure.activeTimer.expiresAt).getTime() - Date.now()
+    : 0;
+  const initialParts = msToparts(initialRemaining);
+  const [timerD, setTimerD] = useState(initialParts.d);
+  const [timerH, setTimerH] = useState(initialParts.h);
+  const [timerM, setTimerM] = useState(initialParts.m);
+  const timerMs = timerD * 86_400_000 + timerH * 3_600_000 + timerM * 60_000;
+
+  const isHull = structure.activeTimer?.kind === "ARMOR_TO_HULL";
+
   function save() {
     if (!system.trim()) { setError("System is required."); return; }
+    if (structure.activeTimer && timerMs <= 0) {
+      setError("Timer must be in the future."); return;
+    }
     setError("");
     startTransition(async () => {
+      const timerExpiresAt = structure.activeTimer
+        ? new Date(Date.now() + timerMs).toISOString()
+        : undefined;
+
       const res = await fetch(`/api/structures/${structure.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -44,6 +79,7 @@ function EditDialog({
           name: name.trim() || null,
           corporation: corporation.trim() || null,
           distanceFromSun: parseFloat(distance) || 0,
+          ...(timerExpiresAt ? { timerExpiresAt } : {}),
         }),
       });
       if (!res.ok) {
@@ -58,7 +94,7 @@ function EditDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="card w-full max-w-md space-y-4">
+      <div className="card w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-white">Edit Structure</h2>
 
         <div>
@@ -88,6 +124,46 @@ function EditDialog({
           <label>Corporation</label>
           <input value={corporation} onChange={(e) => setCorporation(e.target.value)} placeholder="optional" className="w-full" />
         </div>
+
+        {/* Active timer duration editor */}
+        {structure.activeTimer && (
+          <div className={`space-y-2 p-3 rounded-md border ${isHull ? "bg-red-500/5 border-red-500/30" : "bg-yellow-500/5 border-yellow-500/30"}`}>
+            <label className={isHull ? "text-red-300" : "text-yellow-300"}>
+              Time remaining until {isHull ? "hull" : "armor"} window *
+            </label>
+            <div className="flex items-center gap-2">
+              {isHull && (
+                <>
+                  <div className="flex-1">
+                    <input type="number" min={0} max={8} value={timerD}
+                      onChange={(e) => setTimerD(Math.max(0, Math.min(8, parseInt(e.target.value) || 0)))}
+                      className="w-full text-center" />
+                    <p className="text-xs text-eve-muted text-center mt-0.5">days</p>
+                  </div>
+                  <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+                </>
+              )}
+              <div className="flex-1">
+                <input type="number" min={0} max={isHull ? 23 : 47} value={timerH}
+                  onChange={(e) => setTimerH(Math.max(0, Math.min(isHull ? 23 : 47, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center" />
+                <p className="text-xs text-eve-muted text-center mt-0.5">hours</p>
+              </div>
+              <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+              <div className="flex-1">
+                <input type="number" min={0} max={59} value={timerM}
+                  onChange={(e) => setTimerM(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center" />
+                <p className="text-xs text-eve-muted text-center mt-0.5">minutes</p>
+              </div>
+            </div>
+            {timerMs > 0 && (
+              <p className="text-xs text-eve-muted">
+                New expiry: <span className="text-gray-300">{new Date(Date.now() + timerMs).toUTCString()}</span>
+              </p>
+            )}
+          </div>
+        )}
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 

@@ -155,6 +155,9 @@ export default async function StructureDetailPage({
           corporation: structure.corporation,
           distanceFromSun: structure.distanceFromSun,
           notes: structure.notes,
+          activeTimer: activeTimer
+            ? { id: activeTimer.id, expiresAt: activeTimer.expiresAt.toISOString(), kind: activeTimer.kind }
+            : null,
         }}
         isOwner={isOwner}
       />

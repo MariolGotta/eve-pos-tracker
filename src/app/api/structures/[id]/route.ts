@@ -47,7 +47,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { name, system, corporation, notes, distanceFromSun, kind } = body;
+  const { name, system, corporation, notes, distanceFromSun, kind, timerExpiresAt } = body;
 
   let parsedDistance: number | undefined;
   if (distanceFromSun !== undefined) {
@@ -79,12 +79,29 @@ export async function PATCH(
     },
   });
 
+  // Update active timer expiry if provided
+  if (timerExpiresAt !== undefined && typeof timerExpiresAt === "string") {
+    const newExpiry = new Date(timerExpiresAt);
+    if (isNaN(newExpiry.getTime()) || newExpiry <= new Date()) {
+      return NextResponse.json({ error: "timerExpiresAt must be a valid future date" }, { status: 400 });
+    }
+    const activeTimer = await prisma.timer.findFirst({
+      where: { structureId: params.id, status: "PENDING" },
+    });
+    if (activeTimer) {
+      await prisma.timer.update({
+        where: { id: activeTimer.id },
+        data: { expiresAt: newExpiry, notifiedAt: null }, // reset notifiedAt so warnings fire again
+      });
+    }
+  }
+
   await prisma.structureEvent.create({
     data: {
       structureId: params.id,
       userId: session.user.userId,
       action: "EDITED",
-      payload: { system, name, corporation, notes, distanceFromSun, kind } as any,
+      payload: { system, name, corporation, notes, distanceFromSun, kind, timerExpiresAt } as any,
     },
   });
 
