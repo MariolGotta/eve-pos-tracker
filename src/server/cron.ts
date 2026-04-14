@@ -23,6 +23,7 @@ export async function checkTimers(): Promise<{
     where: {
       status: "PENDING",
       expiresAt: { lte: now },
+      structure: { deletedAt: null },
     },
     include: {
       structure: true,
@@ -92,6 +93,7 @@ export async function checkTimers(): Promise<{
       where: {
         status: "PENDING",
         expiresAt: { gte: windowStart, lte: windowEnd },
+        structure: { deletedAt: null },
         // Only notify once per window: notifiedAt is null or older than windowStart
         OR: [{ notifiedAt: null }, { notifiedAt: { lt: windowStart } }],
       },
