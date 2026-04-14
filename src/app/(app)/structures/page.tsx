@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { StructureState } from "@prisma/client";
 import StructureCard from "@/components/StructureCard";
+import StructureFilters from "./StructureFilters";
 import Link from "next/link";
 
 export const revalidate = 30;
@@ -14,6 +15,7 @@ const ALL_STATES: StructureState[] = [
   "DEAD",
 ];
 
+// ALL_STATES kept for the WHERE clause validation below
 export default async function StructuresPage({
   searchParams,
 }: {
@@ -60,49 +62,7 @@ export default async function StructuresPage({
       </div>
 
       {/* Filters */}
-      <form method="get" className="flex flex-wrap gap-3">
-        <input
-          name="system"
-          defaultValue={system}
-          placeholder="Filter by system…"
-          className="w-48"
-        />
-        <input
-          name="corp"
-          defaultValue={corp}
-          placeholder="Filter by corporation…"
-          className="w-48"
-        />
-        <select name="kind" defaultValue={kind ?? ""} className="w-36">
-          <option value="">All types</option>
-          <option value="POS">POS</option>
-          <option value="CITADEL">Citadel</option>
-        </select>
-        <select name="state" defaultValue={state ?? ""} className="w-44">
-          <option value="">All states</option>
-          {ALL_STATES.map((s) => (
-            <option key={s} value={s}>
-              {s.replace(/_/g, " ")}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
-          <input
-            type="checkbox"
-            name="dead"
-            value="1"
-            defaultChecked={includeDead}
-            className="w-auto border-0 p-0"
-          />
-          Include dead
-        </label>
-        <button type="submit" className="btn-primary text-sm">
-          Filter
-        </button>
-        <a href="/structures" className="btn-ghost text-sm">
-          Clear
-        </a>
-      </form>
+      <StructureFilters defaults={{ system, corp, kind, state, dead }} />
 
       <p className="text-xs text-eve-muted">{structures.length} structure(s)</p>
 
