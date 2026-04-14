@@ -2,6 +2,7 @@ import Link from "next/link";
 import { StructureKind, StructureState } from "@prisma/client";
 import StateBadge from "./StateBadge";
 import TimerCountdown from "./TimerCountdown";
+import LocalTime from "./LocalTime";
 
 interface Timer {
   id: string;
@@ -61,14 +62,14 @@ export default function StructureCard({
       </div>
 
       {activeTimer && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-eve-muted border-t border-eve-border pt-2">
-          <span>
-            {activeTimer.kind === "SHIELD_TO_ARMOR"
-              ? "Armor starts"
-              : "Hull starts"}
-            :
-          </span>
-          <TimerCountdown expiresAt={activeTimer.expiresAt} />
+        <div className="mt-3 text-xs text-eve-muted border-t border-eve-border pt-2 space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span>
+              {activeTimer.kind === "SHIELD_TO_ARMOR" ? "Armor starts" : "Hull starts"}:
+            </span>
+            <TimerCountdown expiresAt={activeTimer.expiresAt} />
+          </div>
+          <LocalTime expiresAt={activeTimer.expiresAt} className="text-eve-muted/70" />
         </div>
       )}
     </Link>

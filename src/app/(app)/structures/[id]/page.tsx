@@ -8,6 +8,7 @@ import { availableActions } from "@/lib/state-machine";
 import StructureActions from "./StructureActions";
 import VerifyToggle from "./VerifyToggle";
 import StructureControls from "./StructureControls";
+import LocalTime from "@/components/LocalTime";
 
 export const revalidate = 0;
 
@@ -96,7 +97,10 @@ export default async function StructureDetailPage({
             className="text-2xl"
           />
           <p className="text-xs text-eve-muted mt-1">
-            at {new Date(activeTimer.expiresAt).toUTCString()}
+            UTC: {new Date(activeTimer.expiresAt).toUTCString()}
+          </p>
+          <p className="text-xs text-eve-muted">
+            Local: <LocalTime expiresAt={activeTimer.expiresAt.toISOString()} />
           </p>
         </div>
       )}
