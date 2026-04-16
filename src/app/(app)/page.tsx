@@ -4,14 +4,14 @@ import TimerCountdown from "@/components/TimerCountdown";
 import { StructureState } from "@prisma/client";
 import Link from "next/link";
 
-// Used only for structures without an active timer (VULNERABLE / SHIELD)
+// HULL_VULNERABLE always first, then ARMOR_VULNERABLE, then timer states by time
 const STATE_PRIORITY: Record<StructureState, number> = {
   HULL_VULNERABLE: 0,
   ARMOR_VULNERABLE: 1,
   HULL_TIMER: 2,
   ARMOR_TIMER: 3,
-  SHIELD: 4,
-  DEAD: 5,
+  SHIELD: 99, // excluded from dashboard
+  DEAD: 99,   // excluded from dashboard
 };
 
 export const revalidate = 30;
@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const structures = await prisma.structure.findMany({
     where: {
       deletedAt: null,
-      currentState: { not: "DEAD" },
+      currentState: { notIn: ["DEAD", "SHIELD"] },
     },
     include: {
       timers: {
@@ -32,15 +32,16 @@ export default async function DashboardPage() {
     orderBy: { updatedAt: "desc" },
   });
 
-  // Sort: structures with active timer → by time remaining (soonest first)
-  //       structures without timer (VULNERABLE / SHIELD) → by state urgency after
+  // Sort: HULL_VULNERABLE first, ARMOR_VULNERABLE second,
+  //       then timer states sorted by time remaining (soonest first)
   const sorted = structures.sort((a, b) => {
-    const aTime = a.timers[0]?.expiresAt.getTime() ?? null;
-    const bTime = b.timers[0]?.expiresAt.getTime() ?? null;
-    if (aTime !== null && bTime !== null) return aTime - bTime;
-    if (aTime !== null) return -1; // a has timer, b doesn't → a first
-    if (bTime !== null) return 1;  // b has timer, a doesn't → b first
-    return STATE_PRIORITY[a.currentState] - STATE_PRIORITY[b.currentState];
+    const aPri = STATE_PRIORITY[a.currentState];
+    const bPri = STATE_PRIORITY[b.currentState];
+    if (aPri !== bPri) return aPri - bPri;
+    // Same priority group — sort by timer expiry
+    const aTime = a.timers[0]?.expiresAt.getTime() ?? Infinity;
+    const bTime = b.timers[0]?.expiresAt.getTime() ?? Infinity;
+    return aTime - bTime;
   });
 
   const timerCount = sorted.filter(
