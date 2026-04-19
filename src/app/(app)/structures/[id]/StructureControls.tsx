@@ -5,7 +5,7 @@ import SystemAutocomplete from "@/components/SystemAutocomplete";
 
 interface ActiveTimer {
   id: string;
-  expiresAt: string; // ISO string
+  expiresAt: string;
   kind: string; // SHIELD_TO_ARMOR | ARMOR_TO_HULL
 }
 
@@ -17,11 +17,20 @@ interface Structure {
   corporation: string | null;
   distanceFromSun: number;
   notes: string | null;
+  currentState: string;
   activeTimer?: ActiveTimer | null;
 }
 
+const ALL_STATES = [
+  { value: "SHIELD",           label: "Shield (full shields)" },
+  { value: "ARMOR_TIMER",      label: "Armor Timer (waiting for armor window)" },
+  { value: "ARMOR_VULNERABLE", label: "Armor Vulnerable (window open)" },
+  { value: "HULL_TIMER",       label: "Hull Timer (waiting for hull window)" },
+  { value: "HULL_VULNERABLE",  label: "Hull Vulnerable (window open)" },
+  { value: "DEAD",             label: "Dead (destroyed)" },
+];
+
 // ── Edit Dialog ───────────────────────────────────────────────────────────────
-// Convert ms remaining into d/h/m parts (clamped to 0)
 function msToparts(ms: number) {
   const total = Math.max(0, ms);
   const d = Math.floor(total / 86_400_000);
@@ -44,29 +53,42 @@ function EditDialog({
   const [name, setName] = useState(structure.name ?? "");
   const [corporation, setCorporation] = useState(structure.corporation ?? "");
   const [distance, setDistance] = useState(String(structure.distanceFromSun));
+  const [currentState, setCurrentState] = useState(structure.currentState);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // Timer duration state — pre-populate from current expiresAt
-  const initialRemaining = structure.activeTimer
-    ? new Date(structure.activeTimer.expiresAt).getTime() - Date.now()
-    : 0;
+  const stateChanged = currentState !== structure.currentState;
+  const needsTimer = currentState === "ARMOR_TIMER" || currentState === "HULL_TIMER";
+  const isHullTimer = currentState === "HULL_TIMER";
+
+  // Pre-populate timer from existing active timer if state hasn't changed
+  const initialRemaining =
+    !stateChanged && structure.activeTimer
+      ? new Date(structure.activeTimer.expiresAt).getTime() - Date.now()
+      : 0;
   const initialParts = msToparts(initialRemaining);
   const [timerD, setTimerD] = useState(initialParts.d);
   const [timerH, setTimerH] = useState(initialParts.h);
   const [timerM, setTimerM] = useState(initialParts.m);
-  const timerMs = timerD * 86_400_000 + timerH * 3_600_000 + timerM * 60_000;
 
-  const isHull = structure.activeTimer?.kind === "ARMOR_TO_HULL";
+  // Reset timer inputs when state changes
+  function handleStateChange(s: string) {
+    setCurrentState(s);
+    setTimerD(0); setTimerH(0); setTimerM(0);
+  }
+
+  const timerMs = timerD * 86_400_000 + timerH * 3_600_000 + timerM * 60_000;
 
   function save() {
     if (!system.trim()) { setError("System is required."); return; }
-    if (structure.activeTimer && timerMs <= 0) {
-      setError("Timer must be in the future."); return;
+    if (needsTimer && timerMs <= 0) {
+      setError("Please enter the time remaining for the timer."); return;
     }
     setError("");
     startTransition(async () => {
-      const timerExpiresAt = structure.activeTimer
+      const timerExpiresAt = needsTimer
+        ? new Date(Date.now() + timerMs).toISOString()
+        : !stateChanged && structure.activeTimer
         ? new Date(Date.now() + timerMs).toISOString()
         : undefined;
 
@@ -79,6 +101,7 @@ function EditDialog({
           name: name.trim() || null,
           corporation: corporation.trim() || null,
           distanceFromSun: parseFloat(distance) || 0,
+          ...(stateChanged ? { currentState } : {}),
           ...(timerExpiresAt ? { timerExpiresAt } : {}),
         }),
       });
@@ -110,6 +133,73 @@ function EditDialog({
           </select>
         </div>
 
+        {/* State override */}
+        <div>
+          <label>
+            Current State
+            {stateChanged && (
+              <span className="ml-2 text-xs text-yellow-400 font-normal">⚠ will override current state</span>
+            )}
+          </label>
+          <select
+            value={currentState}
+            onChange={(e) => handleStateChange(e.target.value)}
+            className={`w-full ${stateChanged ? "border-yellow-500/60" : ""}`}
+          >
+            {ALL_STATES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Timer input — shown when state needs a timer */}
+        {(needsTimer || (!stateChanged && structure.activeTimer)) && (
+          <div className={`space-y-2 p-3 rounded-md border ${
+            isHullTimer || structure.activeTimer?.kind === "ARMOR_TO_HULL"
+              ? "bg-red-500/5 border-red-500/30"
+              : "bg-yellow-500/5 border-yellow-500/30"
+          }`}>
+            <label className={
+              isHullTimer || structure.activeTimer?.kind === "ARMOR_TO_HULL"
+                ? "text-red-300"
+                : "text-yellow-300"
+            }>
+              Time remaining until {isHullTimer || structure.activeTimer?.kind === "ARMOR_TO_HULL" ? "hull" : "armor"} window *
+            </label>
+            <div className="flex items-center gap-2">
+              {(isHullTimer || structure.activeTimer?.kind === "ARMOR_TO_HULL") && (
+                <>
+                  <div className="flex-1">
+                    <input type="number" min={0} max={8} value={timerD}
+                      onChange={(e) => setTimerD(Math.max(0, Math.min(8, parseInt(e.target.value) || 0)))}
+                      className="w-full text-center" />
+                    <p className="text-xs text-eve-muted text-center mt-0.5">days</p>
+                  </div>
+                  <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+                </>
+              )}
+              <div className="flex-1">
+                <input type="number" min={0} max={47} value={timerH}
+                  onChange={(e) => setTimerH(Math.max(0, Math.min(47, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center" />
+                <p className="text-xs text-eve-muted text-center mt-0.5">hours</p>
+              </div>
+              <span className="text-xl font-bold text-eve-muted pb-4">:</span>
+              <div className="flex-1">
+                <input type="number" min={0} max={59} value={timerM}
+                  onChange={(e) => setTimerM(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center" />
+                <p className="text-xs text-eve-muted text-center mt-0.5">minutes</p>
+              </div>
+            </div>
+            {timerMs > 0 && (
+              <p className="text-xs text-eve-muted">
+                Expiry: <span className="text-gray-300">{new Date(Date.now() + timerMs).toUTCString()}</span>
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <label>Distance from Sun (AU)</label>
           <input type="number" step="0.01" min="0" value={distance} onChange={(e) => setDistance(e.target.value)} className="w-full" />
@@ -124,46 +214,6 @@ function EditDialog({
           <label>Corporation</label>
           <input value={corporation} onChange={(e) => setCorporation(e.target.value)} placeholder="optional" className="w-full" />
         </div>
-
-        {/* Active timer duration editor */}
-        {structure.activeTimer && (
-          <div className={`space-y-2 p-3 rounded-md border ${isHull ? "bg-red-500/5 border-red-500/30" : "bg-yellow-500/5 border-yellow-500/30"}`}>
-            <label className={isHull ? "text-red-300" : "text-yellow-300"}>
-              Time remaining until {isHull ? "hull" : "armor"} window *
-            </label>
-            <div className="flex items-center gap-2">
-              {isHull && (
-                <>
-                  <div className="flex-1">
-                    <input type="number" min={0} max={8} value={timerD}
-                      onChange={(e) => setTimerD(Math.max(0, Math.min(8, parseInt(e.target.value) || 0)))}
-                      className="w-full text-center" />
-                    <p className="text-xs text-eve-muted text-center mt-0.5">days</p>
-                  </div>
-                  <span className="text-xl font-bold text-eve-muted pb-4">:</span>
-                </>
-              )}
-              <div className="flex-1">
-                <input type="number" min={0} max={isHull ? 23 : 47} value={timerH}
-                  onChange={(e) => setTimerH(Math.max(0, Math.min(isHull ? 23 : 47, parseInt(e.target.value) || 0)))}
-                  className="w-full text-center" />
-                <p className="text-xs text-eve-muted text-center mt-0.5">hours</p>
-              </div>
-              <span className="text-xl font-bold text-eve-muted pb-4">:</span>
-              <div className="flex-1">
-                <input type="number" min={0} max={59} value={timerM}
-                  onChange={(e) => setTimerM(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  className="w-full text-center" />
-                <p className="text-xs text-eve-muted text-center mt-0.5">minutes</p>
-              </div>
-            </div>
-            {timerMs > 0 && (
-              <p className="text-xs text-eve-muted">
-                New expiry: <span className="text-gray-300">{new Date(Date.now() + timerMs).toUTCString()}</span>
-              </p>
-            )}
-          </div>
-        )}
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 

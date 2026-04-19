@@ -47,7 +47,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { name, system, corporation, notes, distanceFromSun, kind, timerExpiresAt } = body;
+  const { name, system, corporation, notes, distanceFromSun, kind, timerExpiresAt, currentState: newState } = body;
 
   let parsedDistance: number | undefined;
   if (distanceFromSun !== undefined) {
@@ -67,6 +67,21 @@ export async function PATCH(
       ? (kind as StructureKind)
       : undefined;
 
+  const validStates = ["SHIELD", "ARMOR_TIMER", "ARMOR_VULNERABLE", "HULL_TIMER", "HULL_VULNERABLE", "DEAD"];
+  const parsedState = newState && validStates.includes(newState as string)
+    ? (newState as string)
+    : undefined;
+
+  const stateChanging = parsedState !== undefined && parsedState !== structure.currentState;
+
+  // If changing state, cancel existing PENDING timers
+  if (stateChanging) {
+    await prisma.timer.updateMany({
+      where: { structureId: params.id, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+  }
+
   const updated = await prisma.structure.update({
     where: { id: params.id },
     data: {
@@ -76,11 +91,31 @@ export async function PATCH(
       ...(notes !== undefined ? { notes: typeof notes === "string" ? notes.trim().slice(0, 100) || null : null } : {}),
       ...(parsedDistance !== undefined ? { distanceFromSun: parsedDistance } : {}),
       ...(parsedKind !== undefined ? { kind: parsedKind } : {}),
+      ...(parsedState !== undefined ? {
+        currentState: parsedState as never,
+        // Clear vulnerable window when leaving VULNERABLE states
+        vulnerableWindowEnd: ["SHIELD","ARMOR_TIMER","HULL_TIMER","DEAD"].includes(parsedState) ? null : undefined,
+      } : {}),
     },
   });
 
-  // Update active timer expiry if provided
-  if (timerExpiresAt !== undefined && typeof timerExpiresAt === "string") {
+  // Create new timer if new state needs one and timerExpiresAt is provided
+  if (stateChanging && timerExpiresAt && typeof timerExpiresAt === "string" &&
+      (parsedState === "ARMOR_TIMER" || parsedState === "HULL_TIMER")) {
+    const newExpiry = new Date(timerExpiresAt);
+    if (!isNaN(newExpiry.getTime()) && newExpiry > new Date()) {
+      await prisma.timer.create({
+        data: {
+          structureId: params.id,
+          kind: parsedState === "ARMOR_TIMER" ? "SHIELD_TO_ARMOR" : "ARMOR_TO_HULL",
+          startedAt: new Date(),
+          expiresAt: newExpiry,
+          createdById: session.user.userId,
+        },
+      });
+    }
+  } else if (!stateChanging && timerExpiresAt !== undefined && typeof timerExpiresAt === "string") {
+    // Just updating expiry of existing active timer
     const newExpiry = new Date(timerExpiresAt);
     if (isNaN(newExpiry.getTime()) || newExpiry <= new Date()) {
       return NextResponse.json({ error: "timerExpiresAt must be a valid future date" }, { status: 400 });
@@ -91,7 +126,7 @@ export async function PATCH(
     if (activeTimer) {
       await prisma.timer.update({
         where: { id: activeTimer.id },
-        data: { expiresAt: newExpiry, notifiedAt: null }, // reset notifiedAt so warnings fire again
+        data: { expiresAt: newExpiry, notifiedAt: null },
       });
     }
   }
