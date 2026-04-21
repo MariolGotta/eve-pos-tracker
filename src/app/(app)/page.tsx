@@ -3,6 +3,12 @@ import StructureCard from "@/components/StructureCard";
 import TimerCountdown from "@/components/TimerCountdown";
 import { StructureState } from "@prisma/client";
 import Link from "next/link";
+import REGIONS_MAP from "@/lib/eve-systems-regions.json";
+
+const regionsMap = REGIONS_MAP as Record<string, string>;
+function getRegion(system: string): string {
+  return regionsMap[system] ?? "Unknown Region";
+}
 
 // HULL_VULNERABLE always first, then ARMOR_VULNERABLE, then timer states by time
 const STATE_PRIORITY: Record<StructureState, number> = {
@@ -93,6 +99,7 @@ export default async function DashboardPage() {
         >
           <p className="text-xs text-eve-muted uppercase tracking-wide mb-1">
             Next timer — {nextTimer.system}
+            <span className="text-eve-gold"> · {getRegion(nextTimer.system)}</span>
             {nextTimer.corporation ? ` · ${nextTimer.corporation}` : ""}
           </p>
           <div className="flex items-baseline gap-3">

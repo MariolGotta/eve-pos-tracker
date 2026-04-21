@@ -3,6 +3,9 @@ import { StructureKind, StructureState } from "@prisma/client";
 import StateBadge from "./StateBadge";
 import TimerCountdown from "./TimerCountdown";
 import LocalTime from "./LocalTime";
+import REGIONS_MAP from "@/lib/eve-systems-regions.json";
+
+const regionsMap = REGIONS_MAP as Record<string, string>;
 
 interface Timer {
   id: string;
@@ -54,8 +57,9 @@ export default function StructureCard({
             )}
           </div>
           <div className="text-xs text-eve-muted mt-0.5 space-x-2">
-            {name && <span>{name}</span>}
-            {corporation && <span className="text-eve-gold">{corporation}</span>}
+            <span className="text-eve-gold/80">{regionsMap[system] ?? "Unknown"}</span>
+            {name && <span>· {name}</span>}
+            {corporation && <span>· <span className="text-eve-gold">{corporation}</span></span>}
           </div>
         </div>
         <StateBadge state={currentState} />
