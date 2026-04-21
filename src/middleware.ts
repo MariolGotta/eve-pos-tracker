@@ -20,6 +20,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow bot to POST killmails via shared secret (no Discord session required)
+  if (pathname.startsWith("/api/killmails") || pathname.startsWith("/api/admin/players")) {
+    const botSecret = req.headers.get("x-bot-secret");
+    if (botSecret && botSecret === process.env.BOT_SHARED_SECRET) {
+      return NextResponse.next();
+    }
+    // Fall through to normal session check for browser users
+  }
+
   // All other routes require a valid session
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 

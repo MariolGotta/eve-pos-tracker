@@ -151,3 +151,110 @@ model NotificationConfig {
 
   @@unique([guildId])
 }
+
+// ─── PPK (Pay Per Kill) ───────────────────────────────────────────────────────
+
+enum ShipType {
+  SUBCAP
+  POS
+  CAPITAL
+}
+
+enum KillmailStatus {
+  PENDING  // aguardando prints adicionais (dano < 98%)
+  COMPLETE // todos participantes registrados, saldos calculados
+}
+
+model Killmail {
+  id                   String         @id           // ID do jogo (ex: "11920642")
+  reportTitle          String                        // "RELATÓRIO DE ABATE" ou "killmail"
+  timestampUtc         DateTime
+  system               String
+  region               String?
+  totalDamage          Int
+  iskValue             BigInt                        // ISK do kill
+  shipType             ShipType       @default(SUBCAP)
+  victimPilot          String
+  victimCorpTag        String
+  victimShip           String
+  participantsTotal    Int?                          // do cabeçalho "Participantes [N]"
+  status               KillmailStatus @default(PENDING)
+  damageCoverage       Float          @default(0)   // soma de damagePct atual (0-100)
+  sourceGuildId        String?
+  submittedByDiscordId String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  attackers KillmailAttacker[]
+
+  @@index([status])
+  @@index([timestampUtc])
+  @@index([victimCorpTag])
+}
+
+model KillmailAttacker {
+  id         String  @id @default(cuid())
+  killmailId String
+  pilot      String
+  corpTag    String
+  ship       String
+  damage     Int
+  damagePct  Float
+  finalBlow  Boolean @default(false)
+  topDamage  Boolean @default(false)
+  iskEarned  BigInt? // calculado pela pipeline PPK após COMPLETE
+
+  killmail Killmail @relation(fields: [killmailId], references: [id], onDelete: Cascade)
+
+  @@unique([killmailId, pilot])
+  @@index([killmailId])
+  @@index([pilot])
+  @@index([corpTag])
+}
+
+model Player {
+  id          String   @id @default(cuid())
+  pilot       String   @unique
+  corpTag     String?                   // última corp conhecida
+  totalEarned BigInt   @default(0)
+  totalPaid   BigInt   @default(0)
+  remaining   BigInt   @default(0)      // totalEarned - totalPaid (cache recalculado)
+  updatedAt   DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([remaining])
+  @@index([pilot])
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  playerId        String
+  iskAmount       BigInt
+  notes           String?
+  paidByDiscordId String
+  createdAt       DateTime @default(now())
+
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@index([playerId])
+}
+
+model PpkCorporation {
+  id        String   @id @default(cuid())
+  corpTag   String   @unique              // ex: "FLBR", "W4VE"
+  fullName  String?
+  eligible  Boolean  @default(true)       // se recebe PPK ("is bot5?")
+  createdAt DateTime @default(now())
+}
+
+model PpkConfig {
+  id                 Int      @id @default(1) // singleton
+  subcapMultiplier   Float    @default(1.0)   // BountyRewards!B2
+  posFixedIsk        BigInt   @default(0)     // BountyRewards!B1 (ISK fixo por POS)
+  capitalFixedIsk    BigInt   @default(0)     // BountyRewards!B3
+  bot5Coefficient    Float    @default(1.0)   // BountyRewards!A7 (corp elegível)
+  nonBot5Coefficient Float    @default(0.5)   // BountyRewards!B7 (corp não elegível)
+  subcapCapIsk       BigInt   @default(15000000000) // cap de 15B ISK para subcap
+  updatedAt          DateTime @updatedAt
+}

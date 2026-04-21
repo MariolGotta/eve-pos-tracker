@@ -43,6 +43,12 @@ export default async function AppLayout({
             >
               + New POS
             </Link>
+            <Link
+              href="/ppk"
+              className="btn-ghost text-xs px-3 py-1.5 text-eve-accent"
+            >
+              PPK
+            </Link>
             {isOwner && (
               <>
                 <Link
