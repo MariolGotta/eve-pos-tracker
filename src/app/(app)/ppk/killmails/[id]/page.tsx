@@ -5,6 +5,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { KillmailAttackersClient } from "./KillmailAttackersClient";
 import type { AttackerRow } from "./KillmailAttackersClient";
+import { ReprocessButton } from "./ReprocessButton";
 
 function formatIsk(isk: bigint | null): string {
   if (!isk) return "—";
@@ -127,9 +128,23 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
 
       {/* Owner actions */}
       {isOwner && (
-        <div className="text-eve-muted text-xs">
-          Para deletar esta killmail e reverter saldos:{" "}
-          <code className="text-eve-accent">DELETE /api/killmails/{km.id}</code>
+        <div className="space-y-3">
+          {km.status === "COMPLETE" && (
+            <div>
+              <p className="text-eve-muted text-xs mb-2">
+                Recalcula os ISK de cada participante com a configuração atual de{" "}
+                <a href="/admin/ppk" className="text-eve-accent underline">
+                  /admin/ppk
+                </a>
+                . Seguro chamar várias vezes.
+              </p>
+              <ReprocessButton kmId={km.id} />
+            </div>
+          )}
+          <div className="text-eve-muted text-xs">
+            Para deletar esta killmail e reverter saldos:{" "}
+            <code className="text-eve-accent">DELETE /api/killmails/{km.id}</code>
+          </div>
         </div>
       )}
     </div>
