@@ -71,7 +71,7 @@ export default function AdminPpkPage() {
     const corp = await res.json();
     setCorps((prev) => [...prev.filter((c) => c.corpTag !== corp.corpTag), corp].sort((a, b) => a.corpTag.localeCompare(b.corpTag)));
     setNewTag(""); setNewName(""); setSaving(false);
-    setMsg("Corp adicionada!");
+    setMsg("Corporation added!");
     setTimeout(() => setMsg(""), 2000);
   }
 
@@ -86,7 +86,7 @@ export default function AdminPpkPage() {
   }
 
   async function deleteCorp(id: string) {
-    if (!confirm("Remover esta corporation?")) return;
+    if (!confirm("Remove this corporation?")) return;
     await fetch("/api/admin/ppk/corps", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -104,7 +104,7 @@ export default function AdminPpkPage() {
       body: JSON.stringify(config),
     });
     setSaving(false);
-    setMsg("Configuração salva!");
+    setMsg("Configuration saved!");
     setTimeout(() => setMsg(""), 2000);
   }
 
@@ -116,16 +116,16 @@ export default function AdminPpkPage() {
       {/* Corporations */}
       <section>
         <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-4">
-          Corporações Elegíveis (Bot5 List)
+          Eligible Corporations (Bot5 List)
         </h2>
         <div className="bg-eve-panel border border-eve-border rounded overflow-hidden mb-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-eve-border text-eve-muted text-xs uppercase tracking-wider">
                 <th className="text-left px-4 py-3">Tag</th>
-                <th className="text-left px-4 py-3">Nome Completo</th>
-                <th className="text-center px-4 py-3">Elegível (PPK)</th>
-                <th className="text-center px-4 py-3">Ações</th>
+                <th className="text-left px-4 py-3">Full Name</th>
+                <th className="text-center px-4 py-3">Eligible (PPK)</th>
+                <th className="text-center px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -138,7 +138,7 @@ export default function AdminPpkPage() {
                       onClick={() => toggleEligible(c)}
                       className={`text-xs px-2 py-0.5 rounded border transition-colors ${c.eligible ? "border-eve-green text-eve-green hover:bg-eve-green/10" : "border-eve-red text-eve-red hover:bg-eve-red/10"}`}
                     >
-                      {c.eligible ? "SIM" : "NÃO"}
+                      {c.eligible ? "YES" : "NO"}
                     </button>
                   </td>
                   <td className="px-4 py-2 text-center">
@@ -146,13 +146,13 @@ export default function AdminPpkPage() {
                       onClick={() => deleteCorp(c.id)}
                       className="text-eve-red hover:underline text-xs"
                     >
-                      Remover
+                      Remove
                     </button>
                   </td>
                 </tr>
               ))}
               {corps.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-eve-muted">Nenhuma corp cadastrada.</td></tr>
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-eve-muted">No corporations registered.</td></tr>
               )}
             </tbody>
           </table>
@@ -161,7 +161,7 @@ export default function AdminPpkPage() {
         {/* Add corp form */}
         <div className="flex gap-3 items-end">
           <div>
-            <label className="text-eve-muted text-xs block mb-1">Tag da Corp (ex: FLBR)</label>
+            <label className="text-eve-muted text-xs block mb-1">Corp Tag (e.g. FLBR)</label>
             <input
               value={newTag} onChange={(e) => setNewTag(e.target.value.toUpperCase())}
               placeholder="FLBR"
@@ -169,10 +169,10 @@ export default function AdminPpkPage() {
             />
           </div>
           <div>
-            <label className="text-eve-muted text-xs block mb-1">Nome Completo (opcional)</label>
+            <label className="text-eve-muted text-xs block mb-1">Full Name (optional)</label>
             <input
               value={newName} onChange={(e) => setNewName(e.target.value)}
-              placeholder="Federação Luso-Brasileira"
+              placeholder="Luso-Brazilian Federation"
               className="bg-eve-bg border border-eve-border rounded px-3 py-1.5 text-sm text-white w-56 focus:outline-none focus:border-eve-accent"
             />
           </div>
@@ -180,27 +180,27 @@ export default function AdminPpkPage() {
             onClick={addCorp} disabled={saving || !newTag.trim()}
             className="bg-eve-accent hover:bg-eve-accent/80 text-white text-xs px-4 py-1.5 rounded disabled:opacity-50"
           >
-            + Adicionar
+            + Add
           </button>
         </div>
       </section>
 
-      {/* PPK Config — always visible; uses defaults until first save */}
+      {/* PPK Config */}
       <section>
         <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-4">
-          Configuração de Bounty (BountyRewards)
+          Bounty Configuration
         </h2>
         {!configLoaded && (
-          <p className="text-eve-muted text-xs mb-3">Carregando...</p>
+          <p className="text-eve-muted text-xs mb-3">Loading...</p>
         )}
         <div className="bg-eve-panel border border-eve-border rounded p-5 grid grid-cols-2 gap-5 text-sm">
           {([
-            { key: "subcapMultiplier", label: "Multiplicador Subcap", type: "float", hint: "ex: 1.0" },
-            { key: "bot5Coefficient", label: "Coeficiente Bot5 (corps elegíveis)", type: "float", hint: "ex: 1.0" },
-            { key: "nonBot5Coefficient", label: "Coeficiente Não-Bot5", type: "float", hint: "ex: 0.5" },
-            { key: "posFixedIsk", label: "ISK Fixo POS", type: "isk", hint: "ex: 500000000" },
-            { key: "capitalFixedIsk", label: "ISK Fixo Capital", type: "isk", hint: "ex: 1000000000" },
-            { key: "subcapCapIsk", label: "Teto Subcap (default 15B)", type: "isk", hint: "ex: 15000000000" },
+            { key: "subcapMultiplier", label: "Subcap Multiplier", type: "float", hint: "e.g. 1.0" },
+            { key: "bot5Coefficient", label: "Bot5 Coefficient (eligible corps)", type: "float", hint: "e.g. 1.0" },
+            { key: "nonBot5Coefficient", label: "Non-Bot5 Coefficient", type: "float", hint: "e.g. 0.5" },
+            { key: "posFixedIsk", label: "POS Fixed ISK", type: "isk", hint: "e.g. 500000000" },
+            { key: "capitalFixedIsk", label: "Capital Fixed ISK", type: "isk", hint: "e.g. 1000000000" },
+            { key: "subcapCapIsk", label: "Subcap Cap (default 15B)", type: "isk", hint: "e.g. 15000000000" },
           ] as const).map(({ key, label, type, hint }) => (
             <div key={key}>
               <label className="text-eve-muted text-xs block mb-1">{label}</label>
@@ -223,7 +223,7 @@ export default function AdminPpkPage() {
           onClick={saveConfig} disabled={saving}
           className="mt-4 bg-eve-accent hover:bg-eve-accent/80 text-white text-xs px-6 py-1.5 rounded disabled:opacity-50"
         >
-          {saving ? "Salvando..." : "Salvar Configuração"}
+          {saving ? "Saving..." : "Save Configuration"}
         </button>
       </section>
     </div>

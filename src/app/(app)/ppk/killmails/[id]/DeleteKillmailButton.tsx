@@ -10,8 +10,8 @@ export function DeleteKillmailButton({ kmId, kmStatus }: { kmId: string; kmStatu
   async function handle() {
     const warn =
       kmStatus === "COMPLETE"
-        ? `⚠️ Esta killmail está COMPLETA — deletar irá REVERTER os saldos de todos os participantes.\n\nTem certeza que deseja deletar a killmail ${kmId}?`
-        : `Deletar a killmail ${kmId}?`;
+        ? `⚠️ This killmail is COMPLETE — deleting will REVERT all participant balances.\n\nAre you sure you want to delete killmail ${kmId}?`
+        : `Delete killmail ${kmId}?`;
     if (!confirm(warn)) return;
     setLoading(true);
     const res = await fetch(`/api/killmails/${kmId}`, { method: "DELETE" });
@@ -20,7 +20,7 @@ export function DeleteKillmailButton({ kmId, kmStatus }: { kmId: string; kmStatu
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));
-      alert("Erro ao deletar: " + (d.error ?? res.status));
+      alert("Error deleting: " + (d.error ?? res.status));
       setLoading(false);
     }
   }
@@ -31,7 +31,7 @@ export function DeleteKillmailButton({ kmId, kmStatus }: { kmId: string; kmStatu
       disabled={loading}
       className="text-xs px-4 py-1.5 border border-eve-red text-eve-red rounded hover:bg-eve-red/10 transition-colors disabled:opacity-50"
     >
-      {loading ? "Deletando..." : "🗑 Deletar Killmail"}
+      {loading ? "Deleting..." : "🗑 Delete Killmail"}
     </button>
   );
 }

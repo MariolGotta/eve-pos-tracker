@@ -9,7 +9,7 @@ export function ReprocessButton({ kmId }: { kmId: string }) {
   const [result, setResult] = useState<string | null>(null);
 
   async function handle() {
-    if (!confirm("Reprocessar cálculo PPK desta killmail? Os saldos anteriores serão revertidos e recalculados.")) return;
+    if (!confirm("Reprocess PPK calculation for this killmail? Previous balances will be reverted and recalculated.")) return;
     setLoading(true);
     setResult(null);
     try {
@@ -22,13 +22,13 @@ export function ReprocessButton({ kmId }: { kmId: string }) {
           : total >= 1e6
           ? (total / 1e6).toFixed(2) + "M"
           : total.toLocaleString();
-        setResult(`✅ ${data.playersUpdated} jogadores atualizados · ${fmt} ISK distribuídos`);
+        setResult(`✅ ${data.playersUpdated} players updated · ${fmt} ISK distributed`);
         router.refresh();
       } else {
-        setResult("❌ " + (data.error ?? "Erro desconhecido"));
+        setResult("❌ " + (data.error ?? "Unknown error"));
       }
     } catch {
-      setResult("❌ Erro de rede");
+      setResult("❌ Network error");
     }
     setLoading(false);
   }
@@ -40,7 +40,7 @@ export function ReprocessButton({ kmId }: { kmId: string }) {
         disabled={loading}
         className="bg-eve-accent hover:opacity-90 text-black text-xs font-semibold px-4 py-1.5 rounded disabled:opacity-50 transition-opacity"
       >
-        {loading ? "Calculando..." : "⚡ Reprocessar PPK"}
+        {loading ? "Calculating..." : "⚡ Reprocess PPK"}
       </button>
       {result && <p className="text-xs text-eve-muted">{result}</p>}
     </div>

@@ -43,7 +43,6 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
     BigInt(0)
   );
 
-  // Serialize BigInt fields for client component (Next.js can't pass BigInt via props)
   const attackersForClient: AttackerRow[] = km.attackers.map((a: any) => ({
     id: a.id,
     pilot: a.pilot,
@@ -71,21 +70,21 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
               : "bg-eve-gold/20 text-eve-gold"
           }`}
         >
-          {km.status === "COMPLETE" ? "COMPLETA" : "PENDENTE"}
+          {km.status === "COMPLETE" ? "COMPLETE" : "PENDING"}
         </span>
       </div>
 
       {/* Header info */}
       <div className="bg-eve-panel border border-eve-border rounded p-5 grid grid-cols-2 gap-4 text-sm">
         <div>
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Vítima</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Victim</div>
           <div className="font-medium">
             [{km.victimCorpTag}] {km.victimPilot}
           </div>
           <div className="text-eve-muted text-xs mt-0.5">{km.victimShip}</div>
         </div>
         <div>
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Local / Data</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Location / Date</div>
           <div className="font-medium">
             {km.system}
             {km.region ? ` — ${km.region}` : ""}
@@ -93,37 +92,33 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
           <div className="text-eve-muted text-xs mt-0.5">{formatDate(km.timestampUtc)}</div>
         </div>
         <div>
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Valor do Kill</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Kill Value</div>
           <div className="font-bold text-eve-gold">{formatIsk(km.iskValue)} ISK</div>
         </div>
         <div>
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">
-            Cobertura de Dano
-          </div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Damage Coverage</div>
           <div className="font-medium">
             {km.damageCoverage.toFixed(1)}%{" "}
             <span className="text-eve-muted text-xs">
               ({km.attackers.length}
-              {km.participantsTotal ? `/${km.participantsTotal}` : ""} atacantes)
+              {km.participantsTotal ? `/${km.participantsTotal}` : ""} attackers)
             </span>
           </div>
         </div>
         <div>
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">
-            Total ISK Distribuído
-          </div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Total ISK Distributed</div>
           <div className="font-bold text-eve-accent">{formatIsk(totalIskEarned)} ISK</div>
         </div>
         <div>
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Tipo de Nave</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Ship Type</div>
           <div>{km.shipType}</div>
         </div>
       </div>
 
-      {/* Attackers table — interactive client component */}
+      {/* Attackers table */}
       <div>
         <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-3">
-          Participantes
+          Participants
         </h2>
         <KillmailAttackersClient kmId={params.id} initialAttackers={attackersForClient} />
       </div>
@@ -131,14 +126,14 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
       {/* Admin actions */}
       {isAdmin && (
         <div className="bg-eve-panel border border-eve-border rounded p-4 space-y-3">
-          <h3 className="text-xs font-semibold text-eve-muted uppercase tracking-wider">Ações Admin</h3>
+          <h3 className="text-xs font-semibold text-eve-muted uppercase tracking-wider">Admin Actions</h3>
           <div className="flex flex-wrap gap-3 items-start">
             {km.status === "COMPLETE" && (
               <div>
                 <p className="text-eve-muted text-xs mb-2">
-                  Recalcula ISK com a config atual de{" "}
+                  Recalculates ISK using the current config at{" "}
                   <a href="/admin/ppk" className="text-eve-accent underline">/admin/ppk</a>.
-                  Seguro chamar várias vezes.
+                  Safe to call multiple times.
                 </p>
                 <ReprocessButton kmId={km.id} />
               </div>
@@ -146,8 +141,8 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
             <div>
               <p className="text-eve-muted text-xs mb-2">
                 {km.status === "COMPLETE"
-                  ? "⚠️ Deletar reverte os saldos de todos os participantes."
-                  : "Remove esta killmail pendente do sistema."}
+                  ? "⚠️ Deleting will revert all participant balances."
+                  : "Removes this pending killmail from the system."}
               </p>
               <DeleteKillmailButton kmId={km.id} kmStatus={km.status} />
             </div>

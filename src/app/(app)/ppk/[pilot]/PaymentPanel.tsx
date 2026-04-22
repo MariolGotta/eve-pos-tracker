@@ -12,7 +12,7 @@ function formatIsk(n: number): string {
 
 export function PaymentPanel({
   playerId,
-  remainingStr,     // BigInt serialized as string
+  remainingStr,
   totalEarnedStr,
   totalPaidStr,
 }: {
@@ -32,7 +32,6 @@ export function PaymentPanel({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  // Local balance preview after payment
   const [localRemaining, setLocalRemaining] = useState(remaining);
   const [localPaid, setLocalPaid] = useState(totalPaid);
 
@@ -65,14 +64,14 @@ export function PaymentPanel({
         setNotes("");
         setResult({
           ok: true,
-          msg: `✅ Pagamento de ${formatIsk(amountNum)} ISK registrado. Saldo restante: ${formatIsk(newRemaining)} ISK`,
+          msg: `✅ Payment of ${formatIsk(amountNum)} ISK registered. Remaining balance: ${formatIsk(newRemaining)} ISK`,
         });
         router.refresh();
       } else {
-        setResult({ ok: false, msg: "❌ " + (data.error ?? "Erro desconhecido") });
+        setResult({ ok: false, msg: "❌ " + (data.error ?? "Unknown error") });
       }
     } catch {
-      setResult({ ok: false, msg: "❌ Erro de rede" });
+      setResult({ ok: false, msg: "❌ Network error" });
     }
     setLoading(false);
   }
@@ -80,21 +79,21 @@ export function PaymentPanel({
   return (
     <div className="bg-eve-panel border border-eve-border rounded-lg p-5 space-y-4">
       <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider">
-        Registrar Pagamento
+        Register Payment
       </h2>
 
       {/* Balance summary */}
       <div className="grid grid-cols-3 gap-3 text-center text-xs">
         <div className="bg-eve-bg border border-eve-border rounded p-3">
-          <div className="text-eve-muted mb-0.5">Total Ganho</div>
+          <div className="text-eve-muted mb-0.5">Total Earned</div>
           <div className="text-white font-bold">{formatIsk(totalEarned)} ISK</div>
         </div>
         <div className="bg-eve-bg border border-eve-border rounded p-3">
-          <div className="text-eve-muted mb-0.5">Já Recebeu</div>
+          <div className="text-eve-muted mb-0.5">Paid Out</div>
           <div className="text-eve-green font-bold">{formatIsk(localPaid)} ISK</div>
         </div>
         <div className="bg-eve-bg border border-eve-border rounded p-3">
-          <div className="text-eve-muted mb-0.5">A Receber</div>
+          <div className="text-eve-muted mb-0.5">Balance Due</div>
           <div className={`font-bold ${localRemaining > 0 ? "text-eve-gold" : "text-eve-muted"}`}>
             {formatIsk(localRemaining)} ISK
           </div>
@@ -102,13 +101,14 @@ export function PaymentPanel({
       </div>
 
       {localRemaining <= 0 ? (
-        <p className="text-eve-green text-sm text-center">✅ Jogador com saldo zerado — nada a pagar.</p>
+        <p className="text-eve-green text-sm text-center">✅ Player balance is zero — nothing to pay.</p>
       ) : (
         <>
           {/* Amount input + quick buttons */}
           <div>
             <label className="block text-xs text-eve-muted mb-1">
-              Valor a pagar (ISK) — saldo: <span className="text-eve-gold font-semibold">{formatIsk(localRemaining)}</span>
+              Amount to pay (ISK) — balance:{" "}
+              <span className="text-eve-gold font-semibold">{formatIsk(localRemaining)}</span>
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -131,7 +131,7 @@ export function PaymentPanel({
                 { label: "25%", pct: 0.25 },
                 { label: "50%", pct: 0.50 },
                 { label: "75%", pct: 0.75 },
-                { label: "Tudo", pct: 1.00 },
+                { label: "Full", pct: 1.00 },
               ].map(({ label, pct }) => (
                 <button
                   key={label}
@@ -143,10 +143,10 @@ export function PaymentPanel({
               ))}
             </div>
 
-            {/* Balance preview after payment */}
+            {/* Balance preview */}
             {isValid && (
               <p className="text-xs text-eve-muted mt-2">
-                Após pagamento: saldo restante será{" "}
+                After payment: remaining balance will be{" "}
                 <span className="text-eve-gold font-semibold">
                   {formatIsk(localRemaining - amountNum)} ISK
                 </span>
@@ -154,19 +154,19 @@ export function PaymentPanel({
             )}
             {amount && amountNum > localRemaining && (
               <p className="text-xs text-eve-red mt-2">
-                ⚠ Valor maior que o saldo disponível ({formatIsk(localRemaining)} ISK)
+                ⚠ Amount exceeds available balance ({formatIsk(localRemaining)} ISK)
               </p>
             )}
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-xs text-eve-muted mb-1">Observação (opcional)</label>
+            <label className="block text-xs text-eve-muted mb-1">Notes (optional)</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="ex: pagamento parcial semana 16"
+              placeholder="e.g. partial payment week 16"
               className="w-full bg-eve-bg border border-eve-border rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-eve-accent"
               maxLength={200}
             />
@@ -178,12 +178,11 @@ export function PaymentPanel({
             disabled={loading || !isValid}
             className="w-full bg-eve-accent hover:opacity-90 text-black text-sm font-semibold py-2 rounded disabled:opacity-40 transition-opacity"
           >
-            {loading ? "Registrando..." : `Registrar Pagamento de ${amountNum > 0 ? formatIsk(amountNum) + " ISK" : "..."}`}
+            {loading ? "Processing..." : `Register Payment of ${amountNum > 0 ? formatIsk(amountNum) + " ISK" : "..."}`}
           </button>
         </>
       )}
 
-      {/* Result message */}
       {result && (
         <p className={`text-xs ${result.ok ? "text-eve-green" : "text-eve-red"}`}>
           {result.msg}

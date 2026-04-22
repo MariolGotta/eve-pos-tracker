@@ -17,7 +17,7 @@ export default async function PpkPage() {
   if (!session) redirect("/login");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = prisma as any; // PPK models available after: npx prisma migrate dev && npx prisma generate
+  const db = prisma as any;
   const players = await db.player.findMany({
     orderBy: { remaining: "desc" },
     take: 200,
@@ -31,21 +31,21 @@ export default async function PpkPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-eve-accent tracking-wider">PPK — Pay Per Kill</h1>
-          <p className="text-eve-muted text-sm mt-1">Saldos de participação em killmails</p>
+          <p className="text-eve-muted text-sm mt-1">Kill participation balances</p>
         </div>
         <Link href="/ppk/killmails" className="btn-ghost text-xs px-3 py-1.5">
-          Ver Killmails
+          View Killmails
         </Link>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-eve-panel border border-eve-border rounded p-4">
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Total a Pagar</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Total Owed</div>
           <div className="text-eve-gold font-bold text-lg">{formatIsk(totalOwed)} ISK</div>
         </div>
         <div className="bg-eve-panel border border-eve-border rounded p-4">
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Já Pago</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Total Paid Out</div>
           <div className="text-eve-green font-bold text-lg">{formatIsk(totalPaid)} ISK</div>
         </div>
         <div className="bg-eve-panel border border-eve-border rounded p-4">
@@ -60,11 +60,11 @@ export default async function PpkPage() {
           <thead>
             <tr className="border-b border-eve-border text-eve-muted text-xs uppercase tracking-wider">
               <th className="text-left px-4 py-3">#</th>
-              <th className="text-left px-4 py-3">Piloto</th>
+              <th className="text-left px-4 py-3">Pilot</th>
               <th className="text-left px-4 py-3">Corp</th>
-              <th className="text-right px-4 py-3">Total Ganho</th>
-              <th className="text-right px-4 py-3">Já Pago</th>
-              <th className="text-right px-4 py-3">A Receber</th>
+              <th className="text-right px-4 py-3">Total Earned</th>
+              <th className="text-right px-4 py-3">Paid Out</th>
+              <th className="text-right px-4 py-3">Balance Due</th>
             </tr>
           </thead>
           <tbody>
@@ -93,7 +93,7 @@ export default async function PpkPage() {
             {players.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-eve-muted">
-                  Nenhum player registrado ainda. Envie killmails via /ppk no Discord.
+                  No players registered yet. Submit killmails via /ppk on Discord.
                 </td>
               </tr>
             )}

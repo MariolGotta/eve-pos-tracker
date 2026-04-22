@@ -32,9 +32,7 @@ export default async function KillmailsPage({
   const [killmails, total] = await Promise.all([
     db.killmail.findMany({
       where: status ? { status } : {},
-      include: {
-        _count: { select: { attackers: true } },
-      },
+      include: { _count: { select: { attackers: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -54,7 +52,7 @@ export default async function KillmailsPage({
             </Link>
             <h1 className="text-xl font-bold text-eve-accent tracking-wider">Killmails</h1>
           </div>
-          <p className="text-eve-muted text-sm mt-1">{total} killmails registradas</p>
+          <p className="text-eve-muted text-sm mt-1">{total} killmails registered</p>
         </div>
 
         {/* Status filter */}
@@ -63,19 +61,19 @@ export default async function KillmailsPage({
             href="/ppk/killmails"
             className={`btn-ghost text-xs px-3 py-1.5 ${!status ? "text-eve-accent" : ""}`}
           >
-            Todas
+            All
           </Link>
           <Link
             href="/ppk/killmails?status=PENDING"
             className={`btn-ghost text-xs px-3 py-1.5 ${status === "PENDING" ? "text-eve-gold" : ""}`}
           >
-            Pendentes
+            Pending
           </Link>
           <Link
             href="/ppk/killmails?status=COMPLETE"
             className={`btn-ghost text-xs px-3 py-1.5 ${status === "COMPLETE" ? "text-eve-green" : ""}`}
           >
-            Completas
+            Complete
           </Link>
         </div>
       </div>
@@ -85,12 +83,12 @@ export default async function KillmailsPage({
           <thead>
             <tr className="border-b border-eve-border text-eve-muted text-xs uppercase tracking-wider">
               <th className="text-left px-4 py-3">ID</th>
-              <th className="text-left px-4 py-3">Data</th>
-              <th className="text-left px-4 py-3">Sistema</th>
-              <th className="text-left px-4 py-3">Vítima</th>
-              <th className="text-left px-4 py-3">Nave</th>
-              <th className="text-right px-4 py-3">Valor ISK</th>
-              <th className="text-right px-4 py-3">Dano %</th>
+              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-left px-4 py-3">System</th>
+              <th className="text-left px-4 py-3">Victim</th>
+              <th className="text-left px-4 py-3">Ship</th>
+              <th className="text-right px-4 py-3">ISK Value</th>
+              <th className="text-right px-4 py-3">Damage %</th>
               <th className="text-center px-4 py-3">Status</th>
             </tr>
           </thead>
@@ -111,11 +109,11 @@ export default async function KillmailsPage({
                 <td className="px-4 py-2 text-right font-medium">{formatIsk(km.iskValue)}</td>
                 <td className="px-4 py-2 text-right text-xs">
                   {km.damageCoverage.toFixed(1)}%
-                  <span className="text-eve-muted ml-1">({km._count.attackers} atacantes)</span>
+                  <span className="text-eve-muted ml-1">({km._count.attackers} attackers)</span>
                 </td>
                 <td className="px-4 py-2 text-center">
                   <span className={`text-xs px-2 py-0.5 rounded ${km.status === "COMPLETE" ? "bg-eve-green/20 text-eve-green" : "bg-eve-gold/20 text-eve-gold"}`}>
-                    {km.status === "COMPLETE" ? "COMPLETA" : "PENDENTE"}
+                    {km.status === "COMPLETE" ? "COMPLETE" : "PENDING"}
                   </span>
                 </td>
               </tr>
@@ -123,7 +121,7 @@ export default async function KillmailsPage({
             {killmails.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-eve-muted">
-                  Nenhuma killmail encontrada.
+                  No killmails found.
                 </td>
               </tr>
             )}

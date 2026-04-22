@@ -34,7 +34,6 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
 
   if (!player) notFound();
 
-  // Get killmails this player participated in
   const attackerRecords = await db.killmailAttacker.findMany({
     where: { pilot },
     include: {
@@ -66,15 +65,15 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
       {/* Balance cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-eve-panel border border-eve-border rounded p-4">
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Total Ganho</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Total Earned</div>
           <div className="text-white font-bold text-lg">{formatIsk(player.totalEarned)} ISK</div>
         </div>
         <div className="bg-eve-panel border border-eve-border rounded p-4">
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Já Recebeu</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Paid Out</div>
           <div className="text-eve-green font-bold text-lg">{formatIsk(player.totalPaid)} ISK</div>
         </div>
         <div className="bg-eve-panel border border-eve-border rounded p-4">
-          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">A Receber</div>
+          <div className="text-eve-muted text-xs uppercase tracking-wider mb-1">Balance Due</div>
           <div className={`font-bold text-lg ${player.remaining > 0n ? "text-eve-gold" : "text-eve-muted"}`}>
             {formatIsk(player.remaining)} ISK
           </div>
@@ -90,12 +89,12 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-eve-border text-eve-muted text-xs uppercase tracking-wider">
-                <th className="text-left px-4 py-3">Data</th>
-                <th className="text-left px-4 py-3">Sistema</th>
-                <th className="text-left px-4 py-3">Vítima</th>
-                <th className="text-left px-4 py-3">Nave</th>
-                <th className="text-right px-4 py-3">Dano %</th>
-                <th className="text-right px-4 py-3">ISK Ganho</th>
+                <th className="text-left px-4 py-3">Date</th>
+                <th className="text-left px-4 py-3">System</th>
+                <th className="text-left px-4 py-3">Victim</th>
+                <th className="text-left px-4 py-3">Ship</th>
+                <th className="text-right px-4 py-3">Damage %</th>
+                <th className="text-right px-4 py-3">ISK Earned</th>
               </tr>
             </thead>
             <tbody>
@@ -119,7 +118,7 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
               ))}
               {attackerRecords.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-eve-muted">Nenhuma killmail encontrada.</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-eve-muted">No killmails found.</td>
                 </tr>
               )}
             </tbody>
@@ -128,18 +127,18 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
       </div>
 
       {/* Payment history */}
-      {player.payments.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-3">
-            Pagamentos Recebidos
-          </h2>
+      <div>
+        <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-3">
+          Payment History ({player.payments.length})
+        </h2>
+        {player.payments.length > 0 ? (
           <div className="bg-eve-panel border border-eve-border rounded overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-eve-border text-eve-muted text-xs uppercase tracking-wider">
-                  <th className="text-left px-4 py-3">Data</th>
+                  <th className="text-left px-4 py-3">Date</th>
                   <th className="text-right px-4 py-3">ISK</th>
-                  <th className="text-left px-4 py-3">Notas</th>
+                  <th className="text-left px-4 py-3">Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,8 +152,10 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-eve-muted text-sm">No payments recorded yet.</p>
+        )}
+      </div>
 
       {/* Admin: register payment */}
       {isAdmin && (
