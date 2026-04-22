@@ -1,6 +1,7 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { computeKillmailPayouts, detectShipType } from "@/lib/ppk-calc";
+import { jsonBig } from "@/lib/json-response";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -231,5 +232,5 @@ export async function GET(req: NextRequest) {
     take: limit,
   });
 
-  return NextResponse.json(killmails);
+  return jsonBig(killmails);
 }

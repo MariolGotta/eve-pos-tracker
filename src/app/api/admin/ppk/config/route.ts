@@ -1,5 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonBig } from "@/lib/json-response";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
   if (err) return err;
 
   const config = await db.ppkConfig.findUnique({ where: { id: 1 } });
-  return NextResponse.json(config ?? null);
+  return jsonBig(config ?? null);
 }
 
 export async function PUT(req: NextRequest) {
@@ -55,5 +56,5 @@ export async function PUT(req: NextRequest) {
       subcapCapIsk: subcapCapIsk !== undefined ? BigInt(String(subcapCapIsk)) : undefined,
     },
   });
-  return NextResponse.json(config);
+  return jsonBig(config);
 }

@@ -1,5 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonBig } from "@/lib/json-response";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   });
 
   if (!km) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(km);
+  return jsonBig(km);
 }
 
 // ─── DELETE /api/killmails/[id] ───────────────────────────────────────────────
@@ -49,7 +50,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!km) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await db.$transaction(async (tx: any) => {
-    // Reverse player balances if killmail was COMPLETE
     if (km.status === "COMPLETE") {
       for (const a of km.attackers) {
         if (a.iskEarned && a.iskEarned > BigInt(0)) {

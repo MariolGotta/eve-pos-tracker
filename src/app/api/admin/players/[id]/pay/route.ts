@@ -1,5 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonBig } from "@/lib/json-response";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -51,5 +52,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }),
   ]);
 
-  return NextResponse.json({ payment, player: updatedPlayer });
+  return jsonBig({ payment, player: updatedPlayer });
 }
