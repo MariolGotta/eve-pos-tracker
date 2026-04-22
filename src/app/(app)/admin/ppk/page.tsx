@@ -25,9 +25,19 @@ function formatIsk(v: string | number): string {
   return String(n);
 }
 
+const DEFAULT_CONFIG: PpkConfigData = {
+  subcapMultiplier: 1,
+  posFixedIsk: "500000000",
+  capitalFixedIsk: "1000000000",
+  bot5Coefficient: 1,
+  nonBot5Coefficient: 0.5,
+  subcapCapIsk: "15000000000",
+};
+
 export default function AdminPpkPage() {
   const [corps, setCorps] = useState<Corp[]>([]);
-  const [config, setConfig] = useState<PpkConfigData | null>(null);
+  const [config, setConfig] = useState<PpkConfigData>(DEFAULT_CONFIG);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -36,14 +46,17 @@ export default function AdminPpkPage() {
   useEffect(() => {
     fetch("/api/admin/ppk/corps").then((r) => r.json()).then(setCorps);
     fetch("/api/admin/ppk/config").then((r) => r.json()).then((d) => {
-      if (d) setConfig({
-        subcapMultiplier: d.subcapMultiplier,
-        posFixedIsk: String(d.posFixedIsk),
-        capitalFixedIsk: String(d.capitalFixedIsk),
-        bot5Coefficient: d.bot5Coefficient,
-        nonBot5Coefficient: d.nonBot5Coefficient,
-        subcapCapIsk: String(d.subcapCapIsk),
-      });
+      if (d && d.subcapMultiplier !== undefined) {
+        setConfig({
+          subcapMultiplier: d.subcapMultiplier,
+          posFixedIsk: String(d.posFixedIsk),
+          capitalFixedIsk: String(d.capitalFixedIsk),
+          bot5Coefficient: d.bot5Coefficient,
+          nonBot5Coefficient: d.nonBot5Coefficient,
+          subcapCapIsk: String(d.subcapCapIsk),
+        });
+      }
+      setConfigLoaded(true);
     });
   }, []);
 
@@ -172,45 +185,47 @@ export default function AdminPpkPage() {
         </div>
       </section>
 
-      {/* PPK Config */}
-      {config && (
-        <section>
-          <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-4">
-            Configuração de Bounty (BountyRewards)
-          </h2>
-          <div className="bg-eve-panel border border-eve-border rounded p-5 grid grid-cols-2 gap-5 text-sm">
-            {([
-              { key: "subcapMultiplier", label: "Multiplicador Subcap (B2)", type: "float" },
-              { key: "bot5Coefficient", label: "Coeficiente Bot5 (A7)", type: "float" },
-              { key: "nonBot5Coefficient", label: "Coeficiente Não-Bot5 (B7)", type: "float" },
-              { key: "posFixedIsk", label: "ISK Fixo POS (B1)", type: "isk" },
-              { key: "capitalFixedIsk", label: "ISK Fixo Capital (B3)", type: "isk" },
-              { key: "subcapCapIsk", label: "Cap Subcap (15B default)", type: "isk" },
-            ] as const).map(({ key, label, type }) => (
-              <div key={key}>
-                <label className="text-eve-muted text-xs block mb-1">{label}</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={String(config[key])}
-                    onChange={(e) => setConfig((prev) => prev ? { ...prev, [key]: e.target.value } : prev)}
-                    className="bg-eve-bg border border-eve-border rounded px-3 py-1.5 text-sm text-white w-40 focus:outline-none focus:border-eve-accent font-mono"
-                  />
-                  {type === "isk" && (
-                    <span className="text-eve-muted text-xs">= {formatIsk(String(config[key]))}</span>
-                  )}
-                </div>
+      {/* PPK Config — always visible; uses defaults until first save */}
+      <section>
+        <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-4">
+          Configuração de Bounty (BountyRewards)
+        </h2>
+        {!configLoaded && (
+          <p className="text-eve-muted text-xs mb-3">Carregando...</p>
+        )}
+        <div className="bg-eve-panel border border-eve-border rounded p-5 grid grid-cols-2 gap-5 text-sm">
+          {([
+            { key: "subcapMultiplier", label: "Multiplicador Subcap", type: "float", hint: "ex: 1.0" },
+            { key: "bot5Coefficient", label: "Coeficiente Bot5 (corps elegíveis)", type: "float", hint: "ex: 1.0" },
+            { key: "nonBot5Coefficient", label: "Coeficiente Não-Bot5", type: "float", hint: "ex: 0.5" },
+            { key: "posFixedIsk", label: "ISK Fixo POS", type: "isk", hint: "ex: 500000000" },
+            { key: "capitalFixedIsk", label: "ISK Fixo Capital", type: "isk", hint: "ex: 1000000000" },
+            { key: "subcapCapIsk", label: "Teto Subcap (default 15B)", type: "isk", hint: "ex: 15000000000" },
+          ] as const).map(({ key, label, type, hint }) => (
+            <div key={key}>
+              <label className="text-eve-muted text-xs block mb-1">{label}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={String(config[key])}
+                  placeholder={hint}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, [key]: e.target.value }))}
+                  className="bg-eve-bg border border-eve-border rounded px-3 py-1.5 text-sm text-white w-44 focus:outline-none focus:border-eve-accent font-mono"
+                />
+                {type === "isk" && (
+                  <span className="text-eve-muted text-xs">= {formatIsk(String(config[key]))}</span>
+                )}
               </div>
-            ))}
-          </div>
-          <button
-            onClick={saveConfig} disabled={saving}
-            className="mt-4 bg-eve-accent hover:bg-eve-accent/80 text-white text-xs px-6 py-1.5 rounded disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Salvar Configuração"}
-          </button>
-        </section>
-      )}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={saveConfig} disabled={saving}
+          className="mt-4 bg-eve-accent hover:bg-eve-accent/80 text-white text-xs px-6 py-1.5 rounded disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : "Salvar Configuração"}
+        </button>
+      </section>
     </div>
   );
 }
