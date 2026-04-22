@@ -6,6 +6,7 @@ import Link from "next/link";
 import { KillmailAttackersClient } from "./KillmailAttackersClient";
 import type { AttackerRow } from "./KillmailAttackersClient";
 import { ReprocessButton } from "./ReprocessButton";
+import { DeleteKillmailButton } from "./DeleteKillmailButton";
 
 function formatIsk(isk: bigint | null): string {
   if (!isk) return "—";
@@ -36,6 +37,7 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
   if (!km) notFound();
 
   const isOwner = session.user.role === "OWNER";
+  const isAdmin = isOwner || session.user.role === "ADMIN";
   const totalIskEarned = km.attackers.reduce(
     (s: bigint, a: any) => s + (a.iskEarned ?? BigInt(0)),
     BigInt(0)
@@ -126,24 +128,29 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
         <KillmailAttackersClient kmId={params.id} initialAttackers={attackersForClient} />
       </div>
 
-      {/* Owner actions */}
-      {isOwner && (
-        <div className="space-y-3">
-          {km.status === "COMPLETE" && (
+      {/* Admin actions */}
+      {isAdmin && (
+        <div className="bg-eve-panel border border-eve-border rounded p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-eve-muted uppercase tracking-wider">Ações Admin</h3>
+          <div className="flex flex-wrap gap-3 items-start">
+            {km.status === "COMPLETE" && (
+              <div>
+                <p className="text-eve-muted text-xs mb-2">
+                  Recalcula ISK com a config atual de{" "}
+                  <a href="/admin/ppk" className="text-eve-accent underline">/admin/ppk</a>.
+                  Seguro chamar várias vezes.
+                </p>
+                <ReprocessButton kmId={km.id} />
+              </div>
+            )}
             <div>
               <p className="text-eve-muted text-xs mb-2">
-                Recalcula os ISK de cada participante com a configuração atual de{" "}
-                <a href="/admin/ppk" className="text-eve-accent underline">
-                  /admin/ppk
-                </a>
-                . Seguro chamar várias vezes.
+                {km.status === "COMPLETE"
+                  ? "⚠️ Deletar reverte os saldos de todos os participantes."
+                  : "Remove esta killmail pendente do sistema."}
               </p>
-              <ReprocessButton kmId={km.id} />
+              <DeleteKillmailButton kmId={km.id} kmStatus={km.status} />
             </div>
-          )}
-          <div className="text-eve-muted text-xs">
-            Para deletar esta killmail e reverter saldos:{" "}
-            <code className="text-eve-accent">DELETE /api/killmails/{km.id}</code>
           </div>
         </div>
       )}

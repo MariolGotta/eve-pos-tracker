@@ -43,10 +43,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // /admin/ppk is accessible to OWNER and ADMIN
-  const isPpkAdminRoute =
-    pathname.startsWith("/admin/ppk") || pathname.startsWith("/api/admin/ppk");
-  if (isPpkAdminRoute) {
+  // /admin/ppk and /api/admin/players (pay) are accessible to OWNER and ADMIN
+  const isAdminAllowed =
+    pathname.startsWith("/admin/ppk") ||
+    pathname.startsWith("/api/admin/ppk") ||
+    pathname.startsWith("/api/admin/players");
+  if (isAdminAllowed) {
     if (token.role !== "OWNER" && token.role !== "ADMIN") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

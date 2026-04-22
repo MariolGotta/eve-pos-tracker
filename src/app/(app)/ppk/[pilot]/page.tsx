@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { PaymentPanel } from "./PaymentPanel";
 
 function formatIsk(isk: bigint): string {
   const n = Number(isk);
@@ -49,7 +50,7 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
     take: 100,
   });
 
-  const isOwner = session.user.role === "OWNER";
+  const isAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";
 
   return (
     <div className="space-y-6">
@@ -155,14 +156,14 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
         </div>
       )}
 
-      {/* Owner: register payment */}
-      {isOwner && player.remaining > 0n && (
-        <div className="bg-eve-panel border border-eve-border rounded p-4">
-          <p className="text-eve-muted text-xs mb-2">
-            Registrar pagamento: use a API <code className="text-eve-accent">POST /api/admin/players/{player.id}/pay</code>{" "}
-            com <code className="text-eve-accent">{`{ iskAmount, notes }`}</code> ou acesse <Link href="/admin/ppk" className="text-eve-accent underline">/admin/ppk</Link>.
-          </p>
-        </div>
+      {/* Admin: register payment */}
+      {isAdmin && (
+        <PaymentPanel
+          playerId={player.id}
+          remainingStr={String(player.remaining)}
+          totalEarnedStr={String(player.totalEarned)}
+          totalPaidStr={String(player.totalPaid)}
+        />
       )}
     </div>
   );
