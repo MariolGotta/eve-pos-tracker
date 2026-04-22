@@ -20,6 +20,7 @@ model AllowedGuild {
 
 enum Role {
   OWNER
+  ADMIN
   MEMBER
 }
 

@@ -7,16 +7,17 @@ import { NextRequest, NextResponse } from "next/server";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any;
 
-async function requireOwner(req: NextRequest) {
+async function requireAdmin(req: NextRequest) {
   void req;
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (session.user.role !== "OWNER" && session.user.role !== "ADMIN")
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   return null;
 }
 
 export async function GET(req: NextRequest) {
-  const err = await requireOwner(req);
+  const err = await requireAdmin(req);
   if (err) return err;
 
   const config = await db.ppkConfig.findUnique({ where: { id: 1 } });
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const err = await requireOwner(req);
+  const err = await requireAdmin(req);
   if (err) return err;
 
   const body = await req.json();

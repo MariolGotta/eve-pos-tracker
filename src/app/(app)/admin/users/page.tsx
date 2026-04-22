@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Image from "next/image";
+import { RoleToggle } from "./RoleToggle";
 
 export const revalidate = 0;
 
@@ -59,6 +60,11 @@ export default async function UsersPage() {
                     OWNER
                   </span>
                 )}
+                {u.role === "ADMIN" && (
+                  <span className="text-xs bg-eve-accent/20 text-eve-accent border border-eve-accent/40 rounded px-1.5 py-0.5 font-semibold">
+                    ADMIN
+                  </span>
+                )}
               </div>
               <p className="text-xs text-eve-muted font-mono">{u.discordId}</p>
               <p className="text-xs text-eve-muted">
@@ -66,6 +72,9 @@ export default async function UsersPage() {
                 {u._count.structures} structure(s) registered
               </p>
             </div>
+
+            {/* Role toggle — OWNER can promote MEMBER→ADMIN or demote ADMIN→MEMBER */}
+            <RoleToggle userId={u.id} currentRole={u.role} />
           </div>
         ))}
 

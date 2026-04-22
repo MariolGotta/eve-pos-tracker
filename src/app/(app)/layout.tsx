@@ -13,6 +13,7 @@ export default async function AppLayout({
   if (!session) redirect("/login");
 
   const isOwner = session.user.role === "OWNER";
+  const isAdmin = session.user.role === "ADMIN" || isOwner;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -49,6 +50,14 @@ export default async function AppLayout({
             >
               PPK
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin/ppk"
+                className="btn-ghost text-xs px-3 py-1.5 text-eve-gold"
+              >
+                Admin PPK
+              </Link>
+            )}
             {isOwner && (
               <>
                 <Link

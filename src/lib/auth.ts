@@ -98,6 +98,17 @@ export const authOptions: NextAuthOptions = {
         displayName = result.displayName;
       }
 
+      // Preserve existing ADMIN role — only override to OWNER or MEMBER on create/first login
+      const existingUser = await prisma.user.findUnique({
+        where: { discordId },
+        select: { role: true },
+      });
+      const roleToAssign = isOwner
+        ? "OWNER"
+        : existingUser?.role === "ADMIN"
+        ? "ADMIN"   // keep ADMIN — don't reset to MEMBER on every login
+        : "MEMBER";
+
       // Upsert user — displayName: guild nick > global display name (user.name) > keep existing
       await prisma.user.upsert({
         where: { discordId },
@@ -106,13 +117,13 @@ export const authOptions: NextAuthOptions = {
           username: user.name ?? "Unknown",
           displayName: displayName ?? user.name ?? null,
           avatarUrl: user.image ?? null,
-          role: isOwner ? "OWNER" : "MEMBER",
+          role: roleToAssign,
         },
         update: {
           username: user.name ?? "Unknown",
           displayName: displayName ?? user.name ?? undefined,
           avatarUrl: user.image ?? null,
-          role: isOwner ? "OWNER" : "MEMBER",
+          role: roleToAssign,
         },
       });
 

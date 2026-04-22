@@ -6,23 +6,24 @@ import { NextRequest, NextResponse } from "next/server";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any;
 
-async function requireOwner(req: NextRequest) {
+async function requireAdmin(req: NextRequest) {
   void req;
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (session.user.role !== "OWNER" && session.user.role !== "ADMIN")
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   return null;
 }
 
 export async function GET(req: NextRequest) {
-  const err = await requireOwner(req);
+  const err = await requireAdmin(req);
   if (err) return err;
   const corps = await db.ppkCorporation.findMany({ orderBy: { corpTag: "asc" } });
   return NextResponse.json(corps);
 }
 
 export async function POST(req: NextRequest) {
-  const err = await requireOwner(req);
+  const err = await requireAdmin(req);
   if (err) return err;
 
   const { corpTag, fullName, eligible } = await req.json();
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const err = await requireOwner(req);
+  const err = await requireAdmin(req);
   if (err) return err;
 
   const { id, fullName, eligible } = await req.json();
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const err = await requireOwner(req);
+  const err = await requireAdmin(req);
   if (err) return err;
 
   const { id } = await req.json();

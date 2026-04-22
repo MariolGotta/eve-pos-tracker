@@ -43,7 +43,20 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Admin routes require OWNER role
+  // /admin/ppk is accessible to OWNER and ADMIN
+  const isPpkAdminRoute =
+    pathname.startsWith("/admin/ppk") || pathname.startsWith("/api/admin/ppk");
+  if (isPpkAdminRoute) {
+    if (token.role !== "OWNER" && token.role !== "ADMIN") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // All other /admin/* routes require OWNER role
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
     if (token.role !== "OWNER") {
       if (pathname.startsWith("/api/")) {
