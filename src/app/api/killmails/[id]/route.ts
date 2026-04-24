@@ -92,13 +92,40 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     await db.killmail.update({ where: { id: activeId }, data: updateData });
   }
 
+  // Build diff payload — only fields that actually changed
+  const diffPayload: Record<string, unknown> = {};
+  if (targetId) diffPayload.id = `${params.id} → ${targetId}`;
+  if (iskValue !== undefined && BigInt(String(iskValue)) !== BigInt(String(km.iskValue)))
+    diffPayload.iskValue = String(iskValue);
+  if (participantsTotal !== undefined) {
+    const newPT = participantsTotal !== null && participantsTotal !== "" ? Number(participantsTotal) : null;
+    if (newPT !== km.participantsTotal) diffPayload.participantsTotal = newPT;
+  }
+  if (victimPilot !== undefined && String(victimPilot) !== km.victimPilot)
+    diffPayload.victimPilot = String(victimPilot);
+  if (victimCorpTag !== undefined && String(victimCorpTag) !== km.victimCorpTag)
+    diffPayload.victimCorpTag = String(victimCorpTag);
+  if (victimShip !== undefined && String(victimShip) !== km.victimShip)
+    diffPayload.victimShip = String(victimShip);
+  if (system !== undefined && String(system) !== km.system)
+    diffPayload.system = String(system);
+  if (region !== undefined && (region ? String(region) : null) !== km.region)
+    diffPayload.region = region || null;
+  if (timestampUtc !== undefined &&
+      new Date(String(timestampUtc)).toISOString() !== new Date(km.timestampUtc).toISOString())
+    diffPayload.timestampUtc = String(timestampUtc).slice(0, 16);
+  if (shipType !== undefined && shipType !== km.shipType)
+    diffPayload.shipType = `${km.shipType} → ${shipType}`;
+  if (newStatus !== undefined && newStatus !== km.status)
+    diffPayload.status = `${km.status} → ${newStatus}`;
+
   // Log event
   await db.killmailEvent.create({
     data: {
       killmailId: activeId,
       userId: session.user.userId,
       action: "EDITED",
-      payload: { previousId: targetId ? params.id : undefined, ...body, iskValue: undefined },
+      payload: Object.keys(diffPayload).length > 0 ? diffPayload : { noChanges: true },
     },
   });
 

@@ -32,6 +32,46 @@ const ACTION_LABELS: Record<string, string> = {
   DELETED: "🗑 Deleted",
 };
 
+const PAYLOAD_LABELS: Record<string, string> = {
+  id: "ID",
+  iskValue: "ISK value",
+  participantsTotal: "participants",
+  victimPilot: "victim pilot",
+  victimCorpTag: "victim corp",
+  victimShip: "ship",
+  system: "system",
+  region: "region",
+  timestampUtc: "date",
+  shipType: "ship type",
+  status: "status",
+  pilot: "pilot",
+  corpTag: "corp",
+  ship: "ship",
+  damage: "damage",
+  damagePct: "dmg%",
+  finalBlow: "final blow",
+  topDamage: "top damage",
+  attackerCount: "attackers",
+  damageCoverage: "coverage",
+  playersUpdated: "players updated",
+  totalDistributed: "distributed",
+};
+
+function formatPayloadEntry(key: string, value: unknown): string {
+  if (value === null) return `${PAYLOAD_LABELS[key] ?? key}: —`;
+  const label = PAYLOAD_LABELS[key] ?? key;
+  const val = typeof value === "number" ? value.toLocaleString() : String(value);
+  return `${label}: ${val}`;
+}
+
+function formatPayload(payload: Record<string, unknown>): string {
+  if (payload.noChanges) return "no changes";
+  return Object.entries(payload)
+    .filter(([, v]) => v !== null && v !== undefined)
+    .map(([k, v]) => formatPayloadEntry(k, v))
+    .join("  ·  ");
+}
+
 export default async function KillmailDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
@@ -210,13 +250,12 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
                         ? (ev.user.displayName ?? ev.user.username)
                         : <span className="italic">Bot</span>}
                     </td>
-                    <td className="px-4 py-2 text-eve-muted text-xs font-mono max-w-xs truncate">
-                      {ev.payload
-                        ? Object.entries(ev.payload as Record<string, unknown>)
-                            .filter(([, v]) => v !== null && v !== undefined)
-                            .map(([k, v]) => `${k}: ${v}`)
-                            .join(" · ")
-                        : "—"}
+                    <td className="px-4 py-2 text-eve-muted text-xs font-mono max-w-sm">
+                      <span className="break-words whitespace-normal">
+                        {ev.payload
+                          ? formatPayload(ev.payload as Record<string, unknown>)
+                          : "—"}
+                      </span>
                     </td>
                   </tr>
                 ))}

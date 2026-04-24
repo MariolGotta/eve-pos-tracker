@@ -107,13 +107,30 @@ export async function PATCH(
     });
   }
 
+  // Build diff payload — only fields that actually changed
+  const diffPayload: Record<string, unknown> = { pilot: attacker.pilot };
+  if (pilot !== undefined && String(pilot) !== attacker.pilot)
+    diffPayload.pilot = `${attacker.pilot} → ${pilot}`;
+  if (corpTag !== undefined && String(corpTag) !== attacker.corpTag)
+    diffPayload.corpTag = `${attacker.corpTag} → ${corpTag}`;
+  if (ship !== undefined && String(ship) !== attacker.ship)
+    diffPayload.ship = `${attacker.ship} → ${ship}`;
+  if (damage !== undefined && Number(damage) !== Number(attacker.damage))
+    diffPayload.damage = Number(damage);
+  if (damagePct !== undefined && Number(damagePct) !== Number(attacker.damagePct))
+    diffPayload.damagePct = `${Number(attacker.damagePct).toFixed(1)}% → ${Number(damagePct).toFixed(1)}%`;
+  if (finalBlow !== undefined && Boolean(finalBlow) !== attacker.finalBlow)
+    diffPayload.finalBlow = `${attacker.finalBlow} → ${finalBlow}`;
+  if (topDamage !== undefined && Boolean(topDamage) !== attacker.topDamage)
+    diffPayload.topDamage = `${attacker.topDamage} → ${topDamage}`;
+
   // Log event
   await db.killmailEvent.create({
     data: {
       killmailId: params.id,
       userId: session.user.userId,
       action: "ATTACKER_EDITED",
-      payload: { attackerId: params.attackerId, previousPilot: attacker.pilot, ...body },
+      payload: diffPayload,
     },
   });
 
