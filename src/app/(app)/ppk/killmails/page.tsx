@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { NewKillmailModal } from "./NewKillmailModal";
 
 function formatIsk(isk: bigint): string {
   const n = Number(isk);
@@ -55,8 +56,11 @@ export default async function KillmailsPage({
           <p className="text-eve-muted text-sm mt-1">{total} killmails registered</p>
         </div>
 
-        {/* Status filter */}
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <NewKillmailModal />
+
+          {/* Status filter */}
+          <div className="flex gap-2">
           <Link
             href="/ppk/killmails"
             className={`btn-ghost text-xs px-3 py-1.5 ${!status ? "text-eve-accent" : ""}`}
@@ -75,6 +79,7 @@ export default async function KillmailsPage({
           >
             Complete
           </Link>
+          </div>
         </div>
       </div>
 
