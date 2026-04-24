@@ -188,27 +188,32 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
         <KillmailAttackersClient kmId={params.id} initialAttackers={attackersForClient} />
       </div>
 
-      {/* Admin actions */}
-      {isAdmin && (
-        <div className="bg-eve-panel border border-eve-border rounded p-4 space-y-3">
-          <h3 className="text-xs font-semibold text-eve-muted uppercase tracking-wider">Admin Actions</h3>
-          <div className="flex flex-wrap gap-4 items-start">
+      {/* Edit / Add Participants — visible to all logged-in users */}
+      <div className="bg-eve-panel border border-eve-border rounded p-4 space-y-3">
+        <div className="flex flex-wrap gap-4 items-start">
+          <div>
+            <p className="text-eve-muted text-xs mb-2">
+              {isAdmin
+                ? "Edit killmail metadata or add missing participants."
+                : "Add missing participants to this killmail."}
+            </p>
+            <EditKillmailModal km={kmForEdit} isAdmin={isAdmin} />
+          </div>
+
+          {/* Admin-only: Reprocess */}
+          {isAdmin && km.status === "COMPLETE" && (
             <div>
               <p className="text-eve-muted text-xs mb-2">
-                Edit killmail ID, value, victim, location, date and status.
+                Recalculates ISK using the current config at{" "}
+                <a href="/admin/ppk" className="text-eve-accent underline">/admin/ppk</a>.
+                Safe to call multiple times.
               </p>
-              <EditKillmailModal km={kmForEdit} />
+              <ReprocessButton kmId={km.id} />
             </div>
-            {km.status === "COMPLETE" && (
-              <div>
-                <p className="text-eve-muted text-xs mb-2">
-                  Recalculates ISK using the current config at{" "}
-                  <a href="/admin/ppk" className="text-eve-accent underline">/admin/ppk</a>.
-                  Safe to call multiple times.
-                </p>
-                <ReprocessButton kmId={km.id} />
-              </div>
-            )}
+          )}
+
+          {/* Admin-only: Delete */}
+          {isAdmin && (
             <div>
               <p className="text-eve-muted text-xs mb-2">
                 {km.status === "COMPLETE"
@@ -217,9 +222,9 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
               </p>
               <DeleteKillmailButton kmId={km.id} kmStatus={km.status} />
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* In-game link */}
       <InGameLink killId={km.id} />
