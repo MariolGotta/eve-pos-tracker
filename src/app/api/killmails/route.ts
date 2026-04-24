@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (session.user.role !== "OWNER" && session.user.role !== "ADMIN")
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    sessionUserId = (session.user as any).id ?? null;
+    sessionUserId = session.user.userId;
   }
 
   let body: Record<string, unknown>;

@@ -96,7 +96,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   await db.killmailEvent.create({
     data: {
       killmailId: activeId,
-      userId: (session.user as any).id ?? null,
+      userId: session.user.userId,
       action: "EDITED",
       payload: { previousId: targetId ? params.id : undefined, ...body, iskValue: undefined },
     },
