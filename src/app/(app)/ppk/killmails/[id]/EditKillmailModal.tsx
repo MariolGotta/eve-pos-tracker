@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import SystemAutocomplete from "@/components/SystemAutocomplete";
+import REGIONS_RAW from "@/lib/eve-systems-regions.json";
+
+const REGIONS = REGIONS_RAW as Record<string, string>;
 
 type NewAttacker = {
   pilot: string;
@@ -252,14 +256,18 @@ export function EditKillmailModal({ km }: EditKillmailModalProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-eve-muted mb-1">System</label>
-                  <input
+                  <SystemAutocomplete
                     value={system}
-                    onChange={(e) => setSystem(e.target.value)}
-                    className="w-full bg-eve-bg border border-eve-border rounded px-3 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-eve-accent"
+                    onChange={(val) => {
+                      setSystem(val);
+                      const found = REGIONS[val];
+                      if (found) setRegion(found);
+                    }}
+                    inputClassName="w-full bg-eve-bg border border-eve-border rounded px-3 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-eve-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-eve-muted mb-1">Region (optional)</label>
+                  <label className="block text-xs text-eve-muted mb-1">Region (auto-filled)</label>
                   <input
                     value={region}
                     onChange={(e) => setRegion(e.target.value)}

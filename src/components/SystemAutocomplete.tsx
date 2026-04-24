@@ -12,6 +12,7 @@ interface Props {
   id?: string;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
 }
 
 export default function SystemAutocomplete({
@@ -21,6 +22,7 @@ export default function SystemAutocomplete({
   id,
   placeholder = "e.g. Jita",
   className = "",
+  inputClassName,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(0);
@@ -96,7 +98,7 @@ export default function SystemAutocomplete({
         placeholder={placeholder}
         autoComplete="off"
         spellCheck={false}
-        className="w-full"
+        className={inputClassName ?? "w-full"}
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
