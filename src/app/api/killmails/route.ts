@@ -116,27 +116,64 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "killmail_id and attackers are required" }, { status: 400 });
   }
 
+  // ── Input validation ──────────────────────────────────────────────────────
+  const killmailIdStr = String(killmail_id).trim();
+  if (killmailIdStr.length === 0 || killmailIdStr.length > 50)
+    return NextResponse.json({ error: "killmail_id must be 1–50 characters" }, { status: 400 });
+
+  let parsedIskValue: bigint;
+  try {
+    parsedIskValue = BigInt(String(isk_value ?? 0));
+    if (parsedIskValue < 0n)
+      return NextResponse.json({ error: "isk_value cannot be negative" }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "isk_value must be a whole number" }, { status: 400 });
+  }
+
+  let parsedTimestamp: Date;
+  try {
+    parsedTimestamp = new Date(String(timestamp_utc ?? new Date().toISOString()));
+    if (isNaN(parsedTimestamp.getTime())) throw new Error();
+  } catch {
+    return NextResponse.json({ error: "timestamp_utc is not a valid date" }, { status: 400 });
+  }
+
+  if (participants_count_total !== undefined && participants_count_total !== null) {
+    const pt = Number(participants_count_total);
+    if (!Number.isInteger(pt) || pt < 0)
+      return NextResponse.json({ error: "participants_count_total must be a non-negative integer" }, { status: 400 });
+  }
+
+  // Validate attackers array (basic sanity)
+  for (const a of attackers as Record<string, unknown>[]) {
+    const pct = Number((a as any).damage_pct ?? 0);
+    if (isNaN(pct) || pct < 0 || pct > 100)
+      return NextResponse.json({ error: `attacker damage_pct out of range for pilot "${a.pilot}"` }, { status: 400 });
+    if (String(a.pilot ?? "").length > 200)
+      return NextResponse.json({ error: "attacker pilot name exceeds 200 characters" }, { status: 400 });
+  }
+
   const victimObj = (victim ?? {}) as Record<string, unknown>;
   const shipType = detectShipType(String(victimObj.ship ?? ""));
 
   // Upsert the killmail header
   const km = await db.killmail.upsert({
-    where: { id: String(killmail_id) },
+    where: { id: killmailIdStr },
     create: {
-      id: String(killmail_id),
-      reportTitle: String(report_title ?? "killmail"),
-      timestampUtc: new Date(String(timestamp_utc ?? new Date().toISOString())),
-      system: String(system ?? ""),
-      region: region ? String(region) : null,
+      id: killmailIdStr,
+      reportTitle: String(report_title ?? "killmail").slice(0, 200),
+      timestampUtc: parsedTimestamp,
+      system: String(system ?? "").slice(0, 100),
+      region: region ? String(region).slice(0, 100) : null,
       totalDamage: Number(total_damage ?? 0),
-      iskValue: BigInt(String(isk_value ?? 0)),
+      iskValue: parsedIskValue,
       shipType,
-      victimPilot: String(victimObj.pilot ?? ""),
-      victimCorpTag: String(victimObj.corp_tag ?? ""),
-      victimShip: String(victimObj.ship ?? ""),
+      victimPilot: String(victimObj.pilot ?? "").slice(0, 200),
+      victimCorpTag: String(victimObj.corp_tag ?? "").slice(0, 10).toUpperCase(),
+      victimShip: String(victimObj.ship ?? "").slice(0, 200),
       participantsTotal: participants_count_total ? Number(participants_count_total) : null,
-      sourceGuildId: source_guild_id ? String(source_guild_id) : null,
-      submittedByDiscordId: submitted_by_discord_id ? String(submitted_by_discord_id) : null,
+      sourceGuildId: source_guild_id ? String(source_guild_id).slice(0, 50) : null,
+      submittedByDiscordId: submitted_by_discord_id ? String(submitted_by_discord_id).slice(0, 50) : null,
       damageCoverage: 0,
     },
     update: {

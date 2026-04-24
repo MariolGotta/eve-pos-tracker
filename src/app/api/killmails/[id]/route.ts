@@ -48,6 +48,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const km = await db.killmail.findUnique({ where: { id: params.id } });
   if (!km) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const VALID_SHIP_TYPES = new Set(["SUBCAP", "POS", "CAPITAL"]);
+  const VALID_STATUSES   = new Set(["PENDING", "COMPLETE"]);
+
   const {
     newId,
     iskValue,
@@ -61,6 +64,41 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     shipType,
     status: newStatus,
   } = body;
+
+  // ── Input validation ──────────────────────────────────────────────────────
+  if (iskValue !== undefined) {
+    try { BigInt(String(iskValue)); } catch {
+      return NextResponse.json({ error: "iskValue must be a whole number" }, { status: 400 });
+    }
+    if (BigInt(String(iskValue)) < 0n)
+      return NextResponse.json({ error: "iskValue cannot be negative" }, { status: 400 });
+  }
+  if (participantsTotal !== undefined && participantsTotal !== null && participantsTotal !== "") {
+    const pt = Number(participantsTotal);
+    if (!Number.isInteger(pt) || pt < 0)
+      return NextResponse.json({ error: "participantsTotal must be a non-negative integer" }, { status: 400 });
+  }
+  if (shipType !== undefined && !VALID_SHIP_TYPES.has(String(shipType)))
+    return NextResponse.json({ error: `shipType must be one of: ${[...VALID_SHIP_TYPES].join(", ")}` }, { status: 400 });
+  if (newStatus !== undefined && !VALID_STATUSES.has(String(newStatus)))
+    return NextResponse.json({ error: `status must be one of: ${[...VALID_STATUSES].join(", ")}` }, { status: 400 });
+  if (timestampUtc !== undefined) {
+    const d = new Date(String(timestampUtc));
+    if (isNaN(d.getTime()))
+      return NextResponse.json({ error: "timestampUtc is not a valid date" }, { status: 400 });
+  }
+  if (victimPilot   !== undefined && String(victimPilot).length   > 200)
+    return NextResponse.json({ error: "victimPilot exceeds 200 characters" }, { status: 400 });
+  if (victimCorpTag !== undefined && String(victimCorpTag).length > 10)
+    return NextResponse.json({ error: "victimCorpTag exceeds 10 characters" }, { status: 400 });
+  if (victimShip    !== undefined && String(victimShip).length    > 200)
+    return NextResponse.json({ error: "victimShip exceeds 200 characters" }, { status: 400 });
+  if (system        !== undefined && String(system).length        > 100)
+    return NextResponse.json({ error: "system exceeds 100 characters" }, { status: 400 });
+  if (region        !== undefined && region && String(region).length > 100)
+    return NextResponse.json({ error: "region exceeds 100 characters" }, { status: 400 });
+  if (newId         !== undefined && String(newId).trim().length  > 50)
+    return NextResponse.json({ error: "killmail id exceeds 50 characters" }, { status: 400 });
 
   const targetId = newId && String(newId).trim() !== params.id ? String(newId).trim() : null;
 
@@ -77,14 +115,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const updateData: Record<string, unknown> = {};
   if (iskValue !== undefined) updateData.iskValue = BigInt(String(iskValue));
   if (participantsTotal !== undefined) updateData.participantsTotal = participantsTotal !== null && participantsTotal !== "" ? Number(participantsTotal) : null;
-  if (victimPilot !== undefined) updateData.victimPilot = String(victimPilot);
-  if (victimCorpTag !== undefined) updateData.victimCorpTag = String(victimCorpTag);
-  if (victimShip !== undefined) updateData.victimShip = String(victimShip);
-  if (system !== undefined) updateData.system = String(system);
-  if (region !== undefined) updateData.region = region ? String(region) : null;
+  if (victimPilot !== undefined) updateData.victimPilot = String(victimPilot).trim();
+  if (victimCorpTag !== undefined) updateData.victimCorpTag = String(victimCorpTag).trim().toUpperCase();
+  if (victimShip !== undefined) updateData.victimShip = String(victimShip).trim();
+  if (system !== undefined) updateData.system = String(system).trim();
+  if (region !== undefined) updateData.region = region ? String(region).trim() : null;
   if (timestampUtc !== undefined) updateData.timestampUtc = new Date(String(timestampUtc));
-  if (shipType !== undefined) updateData.shipType = shipType;
-  if (newStatus !== undefined) updateData.status = newStatus;
+  if (shipType !== undefined) updateData.shipType = String(shipType);
+  if (newStatus !== undefined) updateData.status = String(newStatus);
 
   if (Object.keys(updateData).length > 0) {
     await db.killmail.update({ where: { id: activeId }, data: updateData });

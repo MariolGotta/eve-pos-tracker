@@ -99,6 +99,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "attackers array is required" }, { status: 400 });
   }
 
+  // ── Validate each attacker before writing ────────────────────────────────
+  for (const a of attackers) {
+    const pilot = String(a.pilot ?? "").trim();
+    if (pilot.length > 200)
+      return NextResponse.json({ error: `pilot name exceeds 200 characters: "${pilot.slice(0, 30)}..."` }, { status: 400 });
+    const corpTag = String(a.corpTag ?? a.corp_tag ?? "");
+    if (corpTag.length > 10)
+      return NextResponse.json({ error: `corpTag exceeds 10 characters: "${corpTag}"` }, { status: 400 });
+    const ship = String(a.ship ?? "");
+    if (ship.length > 200)
+      return NextResponse.json({ error: `ship exceeds 200 characters` }, { status: 400 });
+    const pct = Number(a.damagePct ?? a.damage_pct ?? 0);
+    if (isNaN(pct) || pct < 0 || pct > 100)
+      return NextResponse.json({ error: `damagePct must be 0–100 for pilot "${pilot}"` }, { status: 400 });
+    const dmg = Number(a.damage ?? 0);
+    if (isNaN(dmg) || dmg < 0)
+      return NextResponse.json({ error: `damage must be non-negative for pilot "${pilot}"` }, { status: 400 });
+  }
+
   let added = 0;
   for (const a of attackers) {
     const pilot = String(a.pilot ?? "").trim();
@@ -108,16 +127,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       create: {
         killmailId: km.id,
         pilot,
-        corpTag: String(a.corpTag ?? a.corp_tag ?? "").toUpperCase(),
-        ship: String(a.ship ?? ""),
+        corpTag: String(a.corpTag ?? a.corp_tag ?? "").toUpperCase().trim(),
+        ship: String(a.ship ?? "").trim(),
         damage: Number(a.damage ?? 0),
         damagePct: Number(a.damagePct ?? a.damage_pct ?? 0),
         finalBlow: Boolean(a.finalBlow ?? a.final_blow),
         topDamage: Boolean(a.topDamage ?? a.top_damage),
       },
       update: {
-        corpTag: String(a.corpTag ?? a.corp_tag ?? "").toUpperCase(),
-        ship: String(a.ship ?? ""),
+        corpTag: String(a.corpTag ?? a.corp_tag ?? "").toUpperCase().trim(),
+        ship: String(a.ship ?? "").trim(),
         damage: Number(a.damage ?? 0),
         damagePct: Number(a.damagePct ?? a.damage_pct ?? 0),
         finalBlow: Boolean(a.finalBlow ?? a.final_blow),

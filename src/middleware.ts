@@ -20,10 +20,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow bot to POST killmails via shared secret (no Discord session required)
+  // Allow bot to POST killmails via shared secret (no Discord session required).
+  // Guard: only bypass if BOT_SHARED_SECRET is configured AND matches the header.
   if (pathname.startsWith("/api/killmails") || pathname.startsWith("/api/admin/players")) {
+    const configuredSecret = process.env.BOT_SHARED_SECRET;
     const botSecret = req.headers.get("x-bot-secret");
-    if (botSecret && botSecret === process.env.BOT_SHARED_SECRET) {
+    if (configuredSecret && botSecret && botSecret === configuredSecret) {
       return NextResponse.next();
     }
     // Fall through to normal session check for browser users

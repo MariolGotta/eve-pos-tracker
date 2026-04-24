@@ -80,16 +80,36 @@ export async function PATCH(
 
   const { pilot, corpTag, ship, damage, damagePct, finalBlow, topDamage } = body;
 
+  // ── Input validation ──────────────────────────────────────────────────────
+  if (pilot    !== undefined && String(pilot).trim().length === 0)
+    return NextResponse.json({ error: "pilot cannot be empty" }, { status: 400 });
+  if (pilot    !== undefined && String(pilot).length > 200)
+    return NextResponse.json({ error: "pilot exceeds 200 characters" }, { status: 400 });
+  if (corpTag  !== undefined && String(corpTag).length > 10)
+    return NextResponse.json({ error: "corpTag exceeds 10 characters" }, { status: 400 });
+  if (ship     !== undefined && String(ship).length > 200)
+    return NextResponse.json({ error: "ship exceeds 200 characters" }, { status: 400 });
+  if (damage !== undefined) {
+    const dmgNum = Number(damage);
+    if (isNaN(dmgNum) || dmgNum < 0)
+      return NextResponse.json({ error: "damage must be a non-negative number" }, { status: 400 });
+  }
+  if (damagePct !== undefined) {
+    const pctNum = Number(damagePct);
+    if (isNaN(pctNum) || pctNum < 0 || pctNum > 100)
+      return NextResponse.json({ error: "damagePct must be between 0 and 100" }, { status: 400 });
+  }
+
   await db.killmailAttacker.update({
     where: { id: params.attackerId },
     data: {
-      pilot: pilot !== undefined ? String(pilot) : undefined,
-      corpTag: corpTag !== undefined ? String(corpTag) : undefined,
-      ship: ship !== undefined ? String(ship) : undefined,
-      damage: damage !== undefined ? Number(damage) : undefined,
-      damagePct: damagePct !== undefined ? Number(damagePct) : undefined,
-      finalBlow: finalBlow !== undefined ? Boolean(finalBlow) : undefined,
-      topDamage: topDamage !== undefined ? Boolean(topDamage) : undefined,
+      pilot:     pilot     !== undefined ? String(pilot).trim()            : undefined,
+      corpTag:   corpTag   !== undefined ? String(corpTag).trim().toUpperCase() : undefined,
+      ship:      ship      !== undefined ? String(ship).trim()             : undefined,
+      damage:    damage    !== undefined ? Number(damage)                  : undefined,
+      damagePct: damagePct !== undefined ? Number(damagePct)               : undefined,
+      finalBlow: finalBlow !== undefined ? Boolean(finalBlow)              : undefined,
+      topDamage: topDamage !== undefined ? Boolean(topDamage)              : undefined,
     },
   });
 
