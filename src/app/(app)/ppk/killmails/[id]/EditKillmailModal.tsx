@@ -26,7 +26,6 @@ interface EditKillmailModalProps {
     shipType: string;
     status: string;
   };
-  isAdmin: boolean;
 }
 
 const SHIP_TYPES = ["SUBCAP", "POS", "CAPITAL"];
@@ -41,13 +40,13 @@ const emptyAttacker = (): NewAttacker => ({
   topDamage: false,
 });
 
-export function EditKillmailModal({ km, isAdmin }: EditKillmailModalProps) {
+export function EditKillmailModal({ km }: EditKillmailModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // Metadata form state (admin only)
+  // Metadata form state
   const [newId, setNewId] = useState(km.id);
   const [iskValue, setIskValue] = useState(km.iskValue);
   const [participantsTotal, setParticipantsTotal] = useState(km.participantsTotal?.toString() ?? "");
@@ -82,8 +81,8 @@ export function EditKillmailModal({ km, isAdmin }: EditKillmailModalProps) {
     try {
       let activeId = km.id;
 
-      // 1. Save metadata (admin only)
-      if (isAdmin) {
+      // 1. Save metadata
+      {
         const res = await fetch(`/api/killmails/${km.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -152,7 +151,7 @@ export function EditKillmailModal({ km, isAdmin }: EditKillmailModalProps) {
         onClick={() => setOpen(true)}
         className="text-xs px-4 py-1.5 border border-eve-accent text-eve-accent rounded hover:bg-eve-accent/10 transition-colors"
       >
-        {isAdmin ? "✏️ Edit Killmail" : "➕ Add Participants"}
+        ✏️ Edit Killmail
       </button>
     );
   }
@@ -163,7 +162,7 @@ export function EditKillmailModal({ km, isAdmin }: EditKillmailModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-eve-border">
           <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
-            {isAdmin ? "Edit Killmail" : "Add Participants"}
+            Edit Killmail
           </h2>
           <button
             onClick={() => setOpen(false)}
@@ -174,9 +173,9 @@ export function EditKillmailModal({ km, isAdmin }: EditKillmailModalProps) {
         </div>
 
         <div className="p-5 space-y-5">
-          {/* ── ADMIN METADATA ────────────────────────────────────────────── */}
-          {isAdmin && (
-            <>
+          {/* ── METADATA ──────────────────────────────────────────────────── */}
+          <>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-eve-muted mb-1">Killmail ID</label>
@@ -292,8 +291,7 @@ export function EditKillmailModal({ km, isAdmin }: EditKillmailModalProps) {
               </div>
 
               <hr className="border-eve-border" />
-            </>
-          )}
+          </>
 
           {/* ── ADD PARTICIPANTS ───────────────────────────────────────────── */}
           <div>

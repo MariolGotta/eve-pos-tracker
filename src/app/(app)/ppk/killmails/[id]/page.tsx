@@ -188,20 +188,17 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
         <KillmailAttackersClient kmId={params.id} initialAttackers={attackersForClient} />
       </div>
 
-      {/* Edit / Add Participants — visible to all logged-in users */}
+      {/* Actions — visible to all logged-in users */}
       <div className="bg-eve-panel border border-eve-border rounded p-4 space-y-3">
         <div className="flex flex-wrap gap-4 items-start">
           <div>
             <p className="text-eve-muted text-xs mb-2">
-              {isAdmin
-                ? "Edit killmail metadata or add missing participants."
-                : "Add missing participants to this killmail."}
+              Edit killmail metadata or add missing participants.
             </p>
-            <EditKillmailModal km={kmForEdit} isAdmin={isAdmin} />
+            <EditKillmailModal km={kmForEdit} />
           </div>
 
-          {/* Admin-only: Reprocess */}
-          {isAdmin && km.status === "COMPLETE" && (
+          {km.status === "COMPLETE" && (
             <div>
               <p className="text-eve-muted text-xs mb-2">
                 Recalculates ISK using the current config at{" "}
