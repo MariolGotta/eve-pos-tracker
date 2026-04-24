@@ -12,7 +12,6 @@ function isBotRequest(req: NextRequest) {
 }
 
 // ─── GET /api/killmails/[id] ──────────────────────────────────────────────────
-// Used by the bot (/ppk buscar <id>) and browser users.
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const isBot = isBotRequest(req);
@@ -24,9 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const km = await db.killmail.findUnique({
     where: { id: params.id },
     include: {
-      attackers: {
-        orderBy: { damagePct: "desc" },
-      },
+      attackers: { orderBy: { damagePct: "desc" } },
     },
   });
 
@@ -34,8 +31,81 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return jsonBig(km);
 }
 
+// ─── PATCH /api/killmails/[id] ────────────────────────────────────────────────
+// ADMIN/OWNER. Edit killmail metadata. Supports renaming the ID.
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "OWNER" && session.user.role !== "ADMIN")
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const km = await db.killmail.findUnique({ where: { id: params.id } });
+  if (!km) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const {
+    newId,
+    iskValue,
+    participantsTotal,
+    victimPilot,
+    victimCorpTag,
+    victimShip,
+    system,
+    region,
+    timestampUtc,
+    shipType,
+    status: newStatus,
+  } = body;
+
+  const targetId = newId && String(newId).trim() !== params.id ? String(newId).trim() : null;
+
+  // If renaming the ID, use raw SQL UPDATE so FK ON UPDATE CASCADE propagates
+  if (targetId) {
+    const exists = await db.killmail.findUnique({ where: { id: targetId } });
+    if (exists) return NextResponse.json({ error: `Killmail ID ${targetId} already exists` }, { status: 409 });
+    await db.$executeRawUnsafe(`UPDATE "Killmail" SET id = $1 WHERE id = $2`, targetId, params.id);
+  }
+
+  const activeId = targetId ?? params.id;
+
+  // Build update payload
+  const updateData: Record<string, unknown> = {};
+  if (iskValue !== undefined) updateData.iskValue = BigInt(String(iskValue));
+  if (participantsTotal !== undefined) updateData.participantsTotal = participantsTotal !== null && participantsTotal !== "" ? Number(participantsTotal) : null;
+  if (victimPilot !== undefined) updateData.victimPilot = String(victimPilot);
+  if (victimCorpTag !== undefined) updateData.victimCorpTag = String(victimCorpTag);
+  if (victimShip !== undefined) updateData.victimShip = String(victimShip);
+  if (system !== undefined) updateData.system = String(system);
+  if (region !== undefined) updateData.region = region ? String(region) : null;
+  if (timestampUtc !== undefined) updateData.timestampUtc = new Date(String(timestampUtc));
+  if (shipType !== undefined) updateData.shipType = shipType;
+  if (newStatus !== undefined) updateData.status = newStatus;
+
+  if (Object.keys(updateData).length > 0) {
+    await db.killmail.update({ where: { id: activeId }, data: updateData });
+  }
+
+  // Log event
+  await db.killmailEvent.create({
+    data: {
+      killmailId: activeId,
+      userId: session.user.id,
+      action: "EDITED",
+      payload: { previousId: targetId ? params.id : undefined, ...body, iskValue: undefined },
+    },
+  });
+
+  return jsonBig({ ok: true, id: activeId });
+}
+
 // ─── DELETE /api/killmails/[id] ───────────────────────────────────────────────
-// Owner only. Reverses player balances before deleting.
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -63,6 +133,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         }
       }
     }
+    // Events cascade-delete with the killmail (onDelete: Cascade)
     await tx.killmail.delete({ where: { id: params.id } });
   });
 

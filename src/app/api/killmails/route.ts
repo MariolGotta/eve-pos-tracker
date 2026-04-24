@@ -83,11 +83,13 @@ async function runPpkCalc(killmailId: string) {
 
 export async function POST(req: NextRequest) {
   const isBot = isBotRequest(req);
+  let sessionUserId: string | null = null;
   if (!isBot) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (session.user.role !== "OWNER")
+    if (session.user.role !== "OWNER" && session.user.role !== "ADMIN")
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    sessionUserId = session.user.id;
   }
 
   let body: Record<string, unknown>;
@@ -189,13 +191,25 @@ export async function POST(req: NextRequest) {
   });
 
   if (isComplete && km.status !== "COMPLETE") {
-    // Run payment calculation asynchronously (fire & forget in serverless context)
     try {
       await runPpkCalc(km.id);
     } catch (err) {
       console.error("[PPK] runPpkCalc error:", err);
     }
   }
+
+  // Log CREATED event (only on first insert, not on attacker accumulation)
+  try {
+    const isNew = !km.createdAt || (Date.now() - new Date(km.createdAt).getTime()) < 5000;
+    await db.killmailEvent.create({
+      data: {
+        killmailId: km.id,
+        userId: sessionUserId ?? null,
+        action: isNew ? "CREATED" : "ATTACKER_ADDED",
+        payload: { attackerCount: allAttackers.length, damageCoverage: Math.round(damageCoverage * 10) / 10 },
+      },
+    });
+  } catch { /* non-critical */ }
 
   return NextResponse.json({
     killmailId: km.id,

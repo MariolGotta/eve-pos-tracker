@@ -36,6 +36,7 @@ model User {
   timers           Timer[]
   events           StructureEvent[]
   timerAttendances TimerAttendee[]
+  killmailEvents   KillmailEvent[]
 }
 
 // ─── Eve Structures ──────────────────────────────────────────────────────────
@@ -187,6 +188,7 @@ model Killmail {
   updatedAt            DateTime       @updatedAt
 
   attackers KillmailAttacker[]
+  events    KillmailEvent[]
 
   @@index([status])
   @@index([timestampUtc])
@@ -247,6 +249,21 @@ model PpkCorporation {
   fullName  String?
   eligible  Boolean  @default(true)       // se recebe PPK ("is bot5?")
   createdAt DateTime @default(now())
+}
+
+model KillmailEvent {
+  id         String   @id @default(cuid())
+  killmailId String
+  userId     String?                // null when triggered by bot
+  action     String                 // CREATED, EDITED, ATTACKER_ADDED, ATTACKER_EDITED, ATTACKER_REMOVED, REPROCESSED, DELETED
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  killmail   Killmail @relation(fields: [killmailId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([killmailId])
+  @@index([createdAt])
 }
 
 model PpkConfig {

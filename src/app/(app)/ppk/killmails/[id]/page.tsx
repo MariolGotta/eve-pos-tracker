@@ -7,6 +7,7 @@ import { KillmailAttackersClient } from "./KillmailAttackersClient";
 import type { AttackerRow } from "./KillmailAttackersClient";
 import { ReprocessButton } from "./ReprocessButton";
 import { DeleteKillmailButton } from "./DeleteKillmailButton";
+import { EditKillmailModal } from "./EditKillmailModal";
 
 function formatIsk(isk: bigint | null): string {
   if (!isk) return "—";
@@ -21,6 +22,16 @@ function formatDate(d: Date): string {
   return d.toISOString().slice(0, 19).replace("T", " ") + " UTC";
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  CREATED: "📥 Created",
+  EDITED: "✏️ Edited",
+  ATTACKER_ADDED: "➕ Attacker added",
+  ATTACKER_EDITED: "✏️ Attacker edited",
+  ATTACKER_REMOVED: "🗑 Attacker removed",
+  REPROCESSED: "⚡ Reprocessed",
+  DELETED: "🗑 Deleted",
+};
+
 export default async function KillmailDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
@@ -31,6 +42,11 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
     where: { id: params.id },
     include: {
       attackers: { orderBy: { damagePct: "desc" } },
+      events: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        include: { user: { select: { displayName: true, username: true } } },
+      },
     },
   });
 
@@ -55,6 +71,20 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
     topDamage: a.topDamage,
   }));
 
+  const kmForEdit = {
+    id: km.id,
+    iskValue: String(km.iskValue),
+    participantsTotal: km.participantsTotal,
+    victimPilot: km.victimPilot,
+    victimCorpTag: km.victimCorpTag,
+    victimShip: km.victimShip,
+    system: km.system,
+    region: km.region,
+    timestampUtc: km.timestampUtc.toISOString(),
+    shipType: km.shipType,
+    status: km.status,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -78,17 +108,12 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
       <div className="bg-eve-panel border border-eve-border rounded p-5 grid grid-cols-2 gap-4 text-sm">
         <div>
           <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Victim</div>
-          <div className="font-medium">
-            [{km.victimCorpTag}] {km.victimPilot}
-          </div>
+          <div className="font-medium">[{km.victimCorpTag}] {km.victimPilot}</div>
           <div className="text-eve-muted text-xs mt-0.5">{km.victimShip}</div>
         </div>
         <div>
           <div className="text-eve-muted text-xs uppercase tracking-wider mb-0.5">Location / Date</div>
-          <div className="font-medium">
-            {km.system}
-            {km.region ? ` — ${km.region}` : ""}
-          </div>
+          <div className="font-medium">{km.system}{km.region ? ` — ${km.region}` : ""}</div>
           <div className="text-eve-muted text-xs mt-0.5">{formatDate(km.timestampUtc)}</div>
         </div>
         <div>
@@ -100,8 +125,7 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
           <div className="font-medium">
             {km.damageCoverage.toFixed(1)}%{" "}
             <span className="text-eve-muted text-xs">
-              ({km.attackers.length}
-              {km.participantsTotal ? `/${km.participantsTotal}` : ""} attackers)
+              ({km.attackers.length}{km.participantsTotal ? `/${km.participantsTotal}` : ""} attackers)
             </span>
           </div>
         </div>
@@ -127,7 +151,13 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
       {isAdmin && (
         <div className="bg-eve-panel border border-eve-border rounded p-4 space-y-3">
           <h3 className="text-xs font-semibold text-eve-muted uppercase tracking-wider">Admin Actions</h3>
-          <div className="flex flex-wrap gap-3 items-start">
+          <div className="flex flex-wrap gap-4 items-start">
+            <div>
+              <p className="text-eve-muted text-xs mb-2">
+                Edit killmail ID, value, victim, location, date and status.
+              </p>
+              <EditKillmailModal km={kmForEdit} />
+            </div>
             {km.status === "COMPLETE" && (
               <div>
                 <p className="text-eve-muted text-xs mb-2">
@@ -149,6 +179,54 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
           </div>
         </div>
       )}
+
+      {/* Event Log */}
+      <div>
+        <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-3">
+          Event Log ({km.events.length})
+        </h2>
+        {km.events.length > 0 ? (
+          <div className="bg-eve-panel border border-eve-border rounded overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-eve-border text-eve-muted text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-3">Date</th>
+                  <th className="text-left px-4 py-3">Action</th>
+                  <th className="text-left px-4 py-3">User</th>
+                  <th className="text-left px-4 py-3">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {km.events.map((ev: any) => (
+                  <tr key={ev.id} className="border-b border-eve-border">
+                    <td className="px-4 py-2 text-eve-muted text-xs whitespace-nowrap">
+                      {formatDate(ev.createdAt)}
+                    </td>
+                    <td className="px-4 py-2 text-xs font-medium">
+                      {ACTION_LABELS[ev.action] ?? ev.action}
+                    </td>
+                    <td className="px-4 py-2 text-eve-muted text-xs">
+                      {ev.user
+                        ? (ev.user.displayName ?? ev.user.username)
+                        : <span className="italic">Bot</span>}
+                    </td>
+                    <td className="px-4 py-2 text-eve-muted text-xs font-mono max-w-xs truncate">
+                      {ev.payload
+                        ? Object.entries(ev.payload as Record<string, unknown>)
+                            .filter(([, v]) => v !== null && v !== undefined)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(" · ")
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-eve-muted text-sm">No events recorded yet.</p>
+        )}
+      </div>
     </div>
   );
 }

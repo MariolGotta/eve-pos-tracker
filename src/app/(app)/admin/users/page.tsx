@@ -21,7 +21,7 @@ export default async function UsersPage() {
       avatarUrl: true,
       role: true,
       createdAt: true,
-      _count: { select: { structures: true } },
+      _count: { select: { events: true } },
     },
   });
 
@@ -69,7 +69,7 @@ export default async function UsersPage() {
               <p className="text-xs text-eve-muted font-mono">{u.discordId}</p>
               <p className="text-xs text-eve-muted">
                 Joined {new Date(u.createdAt).toLocaleDateString()} ·{" "}
-                {u._count.structures} structure(s) registered
+                {u._count.events} structure update(s)
               </p>
             </div>
 

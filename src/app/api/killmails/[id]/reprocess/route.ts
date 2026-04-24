@@ -18,7 +18,7 @@ export async function POST(
 ) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "OWNER")
+  if (session.user.role !== "OWNER" && session.user.role !== "ADMIN")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const km = await db.killmail.findUnique({
@@ -111,6 +111,16 @@ export async function POST(
     (s, r) => s + r.iskEarned,
     BigInt(0)
   );
+
+  // Log event
+  await db.killmailEvent.create({
+    data: {
+      killmailId: km.id,
+      userId: session.user.id,
+      action: "REPROCESSED",
+      payload: { playersUpdated: results.length, totalDistributed: totalDistributed.toString() },
+    },
+  });
 
   return NextResponse.json({
     ok: true,

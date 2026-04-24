@@ -7,8 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 const db = prisma as any;
 
 // ─── DELETE /api/killmails/[id]/attackers/[attackerId] ────────────────────────
-// Any authenticated user can remove an attacker (e.g. to fix OCR duplicates).
-// Reverts iskEarned from player balance if it was already distributed.
 
 export async function DELETE(
   req: NextRequest,
@@ -21,7 +19,6 @@ export async function DELETE(
   if (!attacker || attacker.killmailId !== params.id)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Revert distributed ISK from player balance if any
   if (attacker.iskEarned && attacker.iskEarned > BigInt(0)) {
     await db.player.updateMany({
       where: { pilot: attacker.pilot },
@@ -34,7 +31,7 @@ export async function DELETE(
 
   await db.killmailAttacker.delete({ where: { id: params.attackerId } });
 
-  // Recalculate damageCoverage and update status
+  // Recalculate damageCoverage
   const allAttackers = await db.killmailAttacker.findMany({ where: { killmailId: params.id } });
   const damageCoverage = allAttackers.reduce((s: number, a: any) => s + a.damagePct, 0);
   const km = await db.killmail.findUnique({ where: { id: params.id } });
@@ -48,11 +45,20 @@ export async function DELETE(
     data: { damageCoverage, status: isComplete ? "COMPLETE" : "PENDING" },
   });
 
+  // Log event
+  await db.killmailEvent.create({
+    data: {
+      killmailId: params.id,
+      userId: session.user.id,
+      action: "ATTACKER_REMOVED",
+      payload: { pilot: attacker.pilot, corpTag: attacker.corpTag },
+    },
+  });
+
   return NextResponse.json({ ok: true, damageCoverage: Math.round(damageCoverage * 10) / 10 });
 }
 
 // ─── PATCH /api/killmails/[id]/attackers/[attackerId] ─────────────────────────
-// Any authenticated user can edit attacker fields.
 
 export async function PATCH(
   req: NextRequest,
@@ -87,7 +93,6 @@ export async function PATCH(
     },
   });
 
-  // Recalculate coverage if damagePct changed
   if (damagePct !== undefined) {
     const allAttackers = await db.killmailAttacker.findMany({ where: { killmailId: params.id } });
     const newCoverage = allAttackers.reduce((s: number, a: any) => s + a.damagePct, 0);
@@ -101,6 +106,16 @@ export async function PATCH(
       data: { damageCoverage: newCoverage, status: isComplete ? "COMPLETE" : "PENDING" },
     });
   }
+
+  // Log event
+  await db.killmailEvent.create({
+    data: {
+      killmailId: params.id,
+      userId: session.user.id,
+      action: "ATTACKER_EDITED",
+      payload: { attackerId: params.attackerId, previousPilot: attacker.pilot, ...body },
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }
