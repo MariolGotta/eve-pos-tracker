@@ -8,6 +8,7 @@ import type { AttackerRow } from "./KillmailAttackersClient";
 import { ReprocessButton } from "./ReprocessButton";
 import { DeleteKillmailButton } from "./DeleteKillmailButton";
 import { EditKillmailModal } from "./EditKillmailModal";
+import { InGameLink } from "./InGameLink";
 
 function formatIsk(isk: bigint | null): string {
   if (!isk) return "—";
@@ -219,6 +220,9 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
           </div>
         </div>
       )}
+
+      {/* In-game link */}
+      <InGameLink killId={km.id} />
 
       {/* Event Log */}
       <div>
