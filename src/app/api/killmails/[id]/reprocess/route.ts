@@ -116,7 +116,7 @@ export async function POST(
   await db.killmailEvent.create({
     data: {
       killmailId: km.id,
-      userId: session.user.id,
+      userId: (session.user as any).id ?? null,
       action: "REPROCESSED",
       payload: { playersUpdated: results.length, totalDistributed: totalDistributed.toString() },
     },

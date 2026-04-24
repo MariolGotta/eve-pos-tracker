@@ -49,7 +49,7 @@ export async function DELETE(
   await db.killmailEvent.create({
     data: {
       killmailId: params.id,
-      userId: session.user.id,
+      userId: (session.user as any).id ?? null,
       action: "ATTACKER_REMOVED",
       payload: { pilot: attacker.pilot, corpTag: attacker.corpTag },
     },
@@ -111,7 +111,7 @@ export async function PATCH(
   await db.killmailEvent.create({
     data: {
       killmailId: params.id,
-      userId: session.user.id,
+      userId: (session.user as any).id ?? null,
       action: "ATTACKER_EDITED",
       payload: { attackerId: params.attackerId, previousPilot: attacker.pilot, ...body },
     },
