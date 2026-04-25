@@ -56,11 +56,13 @@ const PAYLOAD_LABELS: Record<string, string> = {
   damageCoverage: "coverage",
   playersUpdated: "players updated",
   totalDistributed: "distributed",
+  discordUserId: "submitted by",
 };
 
 function formatPayloadEntry(key: string, value: unknown): string {
   if (value === null) return `${PAYLOAD_LABELS[key] ?? key}: —`;
   const label = PAYLOAD_LABELS[key] ?? key;
+  if (key === "discordUserId") return `${label}: Discord #${String(value)}`;
   const val = typeof value === "number" ? value.toLocaleString() : String(value);
   return `${label}: ${val}`;
 }
@@ -179,6 +181,28 @@ export default async function KillmailDetailPage({ params }: { params: { id: str
           <div>{km.shipType}</div>
         </div>
       </div>
+
+      {/* Screenshot */}
+      {km.screenshotUrl && (
+        <div>
+          <h2 className="text-sm font-semibold text-eve-muted uppercase tracking-wider mb-3">
+            Screenshot
+          </h2>
+          <div className="bg-eve-panel border border-eve-border rounded overflow-hidden">
+            <a href={km.screenshotUrl} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={km.screenshotUrl}
+                alt={`Killmail ${km.id} screenshot`}
+                className="w-full max-h-[480px] object-contain bg-black hover:opacity-90 transition-opacity cursor-zoom-in"
+              />
+            </a>
+            <p className="text-xs text-eve-muted px-3 py-1.5">
+              Clique para abrir em tamanho completo
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Attackers table */}
       <div>

@@ -184,6 +184,7 @@ model Killmail {
   damageCoverage       Float          @default(0)   // soma de damagePct atual (0-100)
   sourceGuildId        String?
   submittedByDiscordId String?
+  screenshotUrl        String?                       // Discord CDN URL do print enviado pelo bot
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 

@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
     participants_count_total,
     source_guild_id,
     submitted_by_discord_id,
+    screenshot_url,
   } = body as Record<string, unknown>;
 
   if (!killmail_id || !attackers || !Array.isArray(attackers)) {
@@ -174,11 +175,14 @@ export async function POST(req: NextRequest) {
       participantsTotal: participants_count_total ? Number(participants_count_total) : null,
       sourceGuildId: source_guild_id ? String(source_guild_id).slice(0, 50) : null,
       submittedByDiscordId: submitted_by_discord_id ? String(submitted_by_discord_id).slice(0, 50) : null,
+      screenshotUrl: screenshot_url ? String(screenshot_url).slice(0, 500) : null,
       damageCoverage: 0,
     },
     update: {
       // Allow updating participant count if sent again
       participantsTotal: participants_count_total ? Number(participants_count_total) : undefined,
+      // Store screenshot URL if not already set
+      screenshotUrl: screenshot_url ? String(screenshot_url).slice(0, 500) : undefined,
     },
   });
 
@@ -241,7 +245,11 @@ export async function POST(req: NextRequest) {
         killmailId: km.id,
         userId: sessionUserId ?? null,
         action: isNew ? "CREATED" : "ATTACKER_ADDED",
-        payload: { attackerCount: allAttackers.length, damageCoverage: Math.round(damageCoverage * 10) / 10 },
+        payload: {
+          attackerCount: allAttackers.length,
+          damageCoverage: Math.round(damageCoverage * 10) / 10,
+          ...(isBot && submitted_by_discord_id ? { discordUserId: String(submitted_by_discord_id) } : {}),
+        },
       },
     });
   } catch { /* non-critical */ }
