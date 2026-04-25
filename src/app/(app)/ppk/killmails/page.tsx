@@ -30,10 +30,29 @@ export default async function KillmailsPage({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = prisma as any;
+  const EDIT_ACTIONS = new Set(["EDITED", "ATTACKER_EDITED", "ATTACKER_ADDED", "ATTACKER_REMOVED"]);
+
+  function getReprocessStatus(km: any): "ok" | "stale" | "never" | null {
+    if (km.status !== "COMPLETE") return null;
+    const lastReprocess = km.events.find((e: any) => e.action === "REPROCESSED");
+    const lastChange = km.events.find((e: any) => EDIT_ACTIONS.has(e.action));
+    if (!lastReprocess) return "never";
+    if (lastChange && new Date(lastChange.createdAt) > new Date(lastReprocess.createdAt)) return "stale";
+    return "ok";
+  }
+
   const [killmails, total] = await Promise.all([
     db.killmail.findMany({
       where: status ? { status } : {},
-      include: { _count: { select: { attackers: true } } },
+      include: {
+        _count: { select: { attackers: true } },
+        events: {
+          where: { action: { in: ["REPROCESSED", "EDITED", "ATTACKER_EDITED", "ATTACKER_ADDED", "ATTACKER_REMOVED"] } },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: { action: true, createdAt: true },
+        },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -95,6 +114,7 @@ export default async function KillmailsPage({
               <th className="text-right px-4 py-3">ISK Value</th>
               <th className="text-right px-4 py-3">Damage %</th>
               <th className="text-center px-4 py-3">Status</th>
+              <th className="text-center px-4 py-3">PPK</th>
             </tr>
           </thead>
           <tbody>
@@ -121,11 +141,20 @@ export default async function KillmailsPage({
                     {km.status === "COMPLETE" ? "COMPLETE" : "PENDING"}
                   </span>
                 </td>
+                <td className="px-4 py-2 text-center">
+                  {(() => {
+                    const s = getReprocessStatus(km);
+                    if (s === "ok")    return <span className="text-xs text-eve-green" title="Reprocessed and up to date">⚡ OK</span>;
+                    if (s === "stale") return <span className="text-xs text-eve-gold" title="Edited after last reprocess — click to reprocess">⚠️ Stale</span>;
+                    if (s === "never") return <span className="text-xs text-eve-muted" title="Never reprocessed">— Never</span>;
+                    return <span className="text-eve-muted text-xs">—</span>;
+                  })()}
+                </td>
               </tr>
             ))}
             {killmails.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-eve-muted">
+                <td colSpan={9} className="px-4 py-8 text-center text-eve-muted">
                   No killmails found.
                 </td>
               </tr>
