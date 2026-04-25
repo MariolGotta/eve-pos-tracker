@@ -13,7 +13,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval required by Next.js dev
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https://cdn.discordapp.com",
+      "img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net",
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
