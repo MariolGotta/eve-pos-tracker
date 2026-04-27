@@ -19,6 +19,7 @@ export default async function PpkPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = prisma as any;
   const players = await db.player.findMany({
+    where: { totalEarned: { gt: BigInt(0) } },
     orderBy: { remaining: "desc" },
     take: 200,
   });

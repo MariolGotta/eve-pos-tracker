@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { PaymentPanel } from "./PaymentPanel";
+import { DeletePlayerButton } from "./DeletePlayerButton";
 
 function formatIsk(isk: bigint): string {
   const n = Number(isk);
@@ -165,6 +166,18 @@ export default async function PlayerPage({ params }: { params: { pilot: string }
           totalEarnedStr={String(player.totalEarned)}
           totalPaidStr={String(player.totalPaid)}
         />
+      )}
+
+      {/* Admin: delete player (for OCR-error names) */}
+      {isAdmin && (
+        <div className="bg-eve-panel border border-red-900/40 rounded p-4">
+          <p className="text-eve-muted text-xs mb-3">
+            ⚠️ Use this if the bot read this pilot&apos;s name incorrectly. Deleting removes them from the
+            ranking but keeps their records on killmails intact. After deleting, reprocess the
+            affected killmails so the ISK is redistributed correctly.
+          </p>
+          <DeletePlayerButton playerId={player.id} pilot={pilot} />
+        </div>
       )}
     </div>
   );
